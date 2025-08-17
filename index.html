@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tournament Voting Platform</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/4.0.3/web3.min.js"></script>
+    <title>Tournament Voting - Monad Testnet</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.1/ethers.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -13,10 +13,10 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
             min-height: 100vh;
+            font-family: 'Arial', sans-serif;
+            color: #ffffff;
             overflow-x: auto;
         }
 
@@ -28,348 +28,337 @@
 
         .header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 40px;
+            padding: 20px 0;
+            background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .header h1 {
-            font-size: 3rem;
+            font-size: 3.5rem;
+            font-weight: bold;
             margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            text-shadow: 0 0 30px rgba(255, 107, 107, 0.5);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.8;
         }
 
         .wallet-section {
-            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 40px;
             padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 15px;
-            margin-bottom: 30px;
             backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .connect-btn, .vote-btn {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+
+        .connect-btn:hover, .vote-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(255, 107, 107, 0.3);
+        }
+
+        .connect-btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
         }
 
         .wallet-info {
             display: flex;
-            justify-content: space-between;
+            flex-direction: column;
             align-items: center;
-            flex-wrap: wrap;
-            gap: 15px;
+            gap: 10px;
         }
 
-        .wallet-address {
-            font-family: monospace;
-            background: rgba(0, 0, 0, 0.2);
-            padding: 10px 15px;
-            border-radius: 8px;
-            word-break: break-all;
-        }
-
-        .btn {
-            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
-            border: none;
-            padding: 12px 24px;
-            color: white;
-            border-radius: 25px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.3s ease;
-            font-size: 16px;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 15px rgba(0,0,0,0.3);
-        }
-
-        .btn:disabled {
-            background: #666;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .admin-section {
-            background: rgba(255, 107, 107, 0.2);
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 30px;
-            backdrop-filter: blur(10px);
-            display: none;
-        }
-
-        .admin-section.visible {
-            display: block;
-        }
-
-        .admin-buttons {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
+        .balance {
+            background: rgba(78, 205, 196, 0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(78, 205, 196, 0.4);
         }
 
         .tournament-info {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
-            margin-bottom: 30px;
+            margin-bottom: 40px;
         }
 
         .info-card {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05);
             padding: 20px;
             border-radius: 15px;
-            text-align: center;
             backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+
+        .info-card h3 {
+            color: #4ecdc4;
+            margin-bottom: 10px;
         }
 
         .bracket-container {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 600px;
+            margin: 40px 0;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
             border-radius: 20px;
-            margin-bottom: 30px;
-            backdrop-filter: blur(10px);
             overflow-x: auto;
         }
 
         .bracket {
             display: flex;
-            justify-content: center;
+            justify-content: space-between;
             align-items: center;
             min-width: 1200px;
-            gap: 60px;
+            gap: 80px;
         }
 
         .round {
             display: flex;
             flex-direction: column;
-            gap: 40px;
-            min-width: 200px;
+            gap: 30px;
+            align-items: center;
         }
 
         .round h3 {
-            text-align: center;
+            color: #4ecdc4;
             margin-bottom: 20px;
-            font-size: 1.2rem;
-            color: #ffd700;
+            font-size: 1.5rem;
+            text-align: center;
+        }
+
+        .matches {
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
         }
 
         .match {
-            background: rgba(255, 255, 255, 0.1);
+            background: linear-gradient(135deg, rgba(255, 107, 107, 0.1), rgba(78, 205, 196, 0.1));
             border-radius: 15px;
             padding: 20px;
-            min-height: 120px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            position: relative;
-            backdrop-filter: blur(10px);
             border: 2px solid transparent;
-            transition: all 0.3s ease;
+            background-clip: padding-box;
+            position: relative;
+            min-width: 280px;
+            backdrop-filter: blur(10px);
         }
 
-        .match.active {
-            border-color: #ffd700;
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
-        }
-
-        .match.finished {
-            border-color: #4ecdc4;
+        .match::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 15px;
+            padding: 2px;
+            background: linear-gradient(135deg, #ff6b6b, #4ecdc4);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask-composite: exclude;
+            z-index: -1;
         }
 
         .participant {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px 0;
-            cursor: pointer;
-            border-radius: 8px;
-            transition: all 0.2s ease;
-            margin: 2px 0;
-        }
-
-        .participant:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        .participant.winner {
-            background: linear-gradient(45deg, #4ecdc4, #45b7b8);
-            font-weight: bold;
-        }
-
-        .participant-name {
-            font-weight: 600;
-        }
-
-        .votes {
-            background: rgba(0, 0, 0, 0.3);
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 0.9rem;
-            min-width: 40px;
-            text-align: center;
-        }
-
-        .timer {
-            position: absolute;
-            top: 5px;
-            right: 10px;
-            background: rgba(255, 107, 107, 0.8);
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            font-weight: bold;
-        }
-
-        .timer.finished {
-            background: rgba(76, 175, 80, 0.8);
-        }
-
-        .vote-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .modal-content {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 30px;
-            border-radius: 20px;
-            text-align: center;
-            max-width: 400px;
-            width: 90%;
-        }
-
-        .modal-content h3 {
-            margin-bottom: 20px;
-            color: #ffd700;
-        }
-
-        .vote-buttons {
-            display: flex;
-            gap: 15px;
-            margin: 20px 0;
-        }
-
-        .vote-btn {
-            flex: 1;
             padding: 15px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 2px solid transparent;
+            margin: 5px 0;
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 10px;
-            color: white;
             cursor: pointer;
             transition: all 0.3s ease;
         }
 
-        .vote-btn:hover {
-            border-color: #ffd700;
-            background: rgba(255, 215, 0, 0.2);
-        }
-
-        .close-modal {
-            background: #ff6b6b;
-            margin-top: 15px;
-        }
-
-        .status-message {
+        .participant:hover {
             background: rgba(255, 255, 255, 0.1);
-            padding: 15px;
-            border-radius: 10px;
-            margin: 20px 0;
+            transform: translateX(5px);
+        }
+
+        .participant.winner {
+            background: linear-gradient(90deg, rgba(78, 205, 196, 0.3), rgba(69, 183, 209, 0.3));
+            border-left: 4px solid #4ecdc4;
+        }
+
+        .participant-name {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .vote-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .votes {
+            background: rgba(255, 107, 107, 0.2);
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.9rem;
+            border: 1px solid rgba(255, 107, 107, 0.4);
+        }
+
+        .vote-btn {
+            padding: 8px 15px;
+            font-size: 0.8rem;
+            margin-left: 10px;
+        }
+
+        .timer {
             text-align: center;
+            margin: 10px 0;
+            font-size: 0.9rem;
+            color: #ff6b6b;
+        }
+
+        .timer.expired {
+            color: #666;
+        }
+
+        .final-winner {
+            text-align: center;
+            margin: 40px 0;
+            padding: 30px;
+            background: linear-gradient(135deg, rgba(255, 107, 107, 0.2), rgba(78, 205, 196, 0.2));
+            border-radius: 20px;
+            border: 2px solid #4ecdc4;
+        }
+
+        .final-winner h2 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #ff6b6b, #4ecdc4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255,255,255,.3);
-            border-radius: 50%;
-            border-top-color: #fff;
-            animation: spin 1s ease-in-out infinite;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            font-size: 1.2rem;
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .credit {
+        .error {
+            color: #ff6b6b;
             text-align: center;
-            margin-top: 30px;
             padding: 20px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
-            backdrop-filter: blur(10px);
+            background: rgba(255, 107, 107, 0.1);
+            border-radius: 10px;
+            margin: 20px 0;
         }
 
-        .credit a {
-            color: #ffd700;
+        .footer {
+            text-align: center;
+            margin-top: 60px;
+            padding: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .footer a {
+            color: #4ecdc4;
             text-decoration: none;
             font-weight: bold;
         }
 
-        .credit a:hover {
+        .footer a:hover {
             text-decoration: underline;
         }
 
-        .treasury-info {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            text-align: center;
-            font-family: monospace;
+        .connections {
+            position: absolute;
+            top: 50%;
+            left: 100%;
+            width: 60px;
+            height: 2px;
+            background: linear-gradient(90deg, #4ecdc4, #ff6b6b);
+            transform: translateY(-50%);
+            z-index: -1;
+        }
+
+        .round:last-child .connections {
+            display: none;
         }
 
         @media (max-width: 768px) {
-            .bracket {
-                gap: 30px;
-                min-width: 800px;
-            }
-            
-            .round {
-                min-width: 150px;
-            }
-            
             .header h1 {
-                font-size: 2rem;
+                font-size: 2.5rem;
             }
+            
+            .bracket {
+                min-width: 800px;
+                gap: 40px;
+            }
+            
+            .match {
+                min-width: 200px;
+                padding: 15px;
+            }
+            
+            .tournament-info {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top: 3px solid #4ecdc4;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🏆 Tournament Voting Platform</h1>
-            <p>Blockchain-powered voting system on Monad Testnet</p>
+            <h1>🏆 Tournament Voting</h1>
+            <p>Compete, Vote, Win on Monad Testnet</p>
         </div>
 
         <div class="wallet-section">
-            <div class="wallet-info">
-                <div>
-                    <strong>Wallet:</strong>
-                    <div class="wallet-address" id="walletAddress">Not connected</div>
-                </div>
-                <div>
-                    <strong>Balance:</strong> <span id="balance">0 MON</span>
-                </div>
-                <button class="btn" id="connectWallet">Connect Wallet</button>
-            </div>
-        </div>
-
-        <div class="treasury-info">
-            <strong>Treasury Address:</strong> 0x6c2AA81b02a940c04A570aFFe7a413ca54C625cf
-        </div>
-
-        <div class="admin-section" id="adminSection">
-            <h3>Admin Controls</h3>
-            <div class="admin-buttons">
-                <button class="btn" onclick="startTournament()">Start Tournament</button>
-                <button class="btn" onclick="forceFinishExpiredMatches()">Force Finish Expired</button>
-                <button class="btn" onclick="checkTournamentStatus()">Check Status</button>
+            <button id="connectWallet" class="connect-btn">Connect Wallet</button>
+            <div id="walletInfo" class="wallet-info" style="display: none;">
+                <div id="walletAddress"></div>
+                <div id="walletBalance" class="balance"></div>
             </div>
         </div>
 
@@ -379,62 +368,45 @@
                 <div id="currentRound">Loading...</div>
             </div>
             <div class="info-card">
-                <h3>Tournament Status</h3>
-                <div id="tournamentStatus">Loading...</div>
+                <h3>Total Rounds</h3>
+                <div id="totalRounds">3</div>
             </div>
             <div class="info-card">
                 <h3>Vote Cost</h3>
                 <div>0.1 MON</div>
             </div>
             <div class="info-card">
-                <h3>Total Participants</h3>
-                <div>8</div>
+                <h3>Tournament State</h3>
+                <div id="tournamentState">Loading...</div>
             </div>
         </div>
 
-        <div class="bracket-container">
-            <div class="bracket" id="bracket">
-                <!-- Bracket will be generated here -->
+        <div id="tournamentContent">
+            <div class="loading">
+                <div class="spinner"></div>
+                <span style="margin-left: 20px;">Loading tournament data...</span>
             </div>
         </div>
 
-        <div class="status-message" id="statusMessage" style="display: none;"></div>
-    </div>
-
-    <!-- Vote Modal -->
-    <div class="vote-modal" id="voteModal">
-        <div class="modal-content">
-            <h3>Cast Your Vote</h3>
-            <p>Select participant to vote for:</p>
-            <div class="vote-buttons" id="voteButtons">
-                <!-- Buttons will be generated here -->
-            </div>
-            <p><strong>Cost: 0.1 MON per vote</strong></p>
-            <button class="btn close-modal" onclick="closeVoteModal()">Close</button>
+        <div class="footer">
+            <p>Created by <a href="https://x.com/ega_2ez4crypto" target="_blank">@ega_2ez4crypto</a></p>
         </div>
-    </div>
-
-    <div class="credit">
-        <p>Created by <a href="https://x.com/ega_2ez4crypto" target="_blank">@ega_2ez4crypto</a></p>
     </div>
 
     <script>
         // Contract configuration
         const CONTRACT_ADDRESS = '0xa10FC3954BC82F93dD6c19EBAB78289c912EA8d1';
         const TREASURY_ADDRESS = '0x6c2AA81b02a940c04A570aFFe7a413ca54C625cf';
+        const CHAIN_ID = 10143;
+        const RPC_URL = 'https://testnet-rpc.monad.xyz';
+        const VOTE_COST = ethers.parseEther('0.1');
+
+        // Contract ABI
         const CONTRACT_ABI = [
             {
                 "inputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "roundNum",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "matchNum",
-                        "type": "uint256"
-                    }
+                    {"internalType": "uint256", "name": "roundNum", "type": "uint256"},
+                    {"internalType": "uint256", "name": "matchNum", "type": "uint256"}
                 ],
                 "name": "finishMatch",
                 "outputs": [],
@@ -456,24 +428,9 @@
             {
                 "anonymous": false,
                 "inputs": [
-                    {
-                        "indexed": false,
-                        "internalType": "uint256",
-                        "name": "round",
-                        "type": "uint256"
-                    },
-                    {
-                        "indexed": false,
-                        "internalType": "uint256",
-                        "name": "matchIndex",
-                        "type": "uint256"
-                    },
-                    {
-                        "indexed": false,
-                        "internalType": "uint256",
-                        "name": "winner",
-                        "type": "uint256"
-                    }
+                    {"indexed": false, "internalType": "uint256", "name": "round", "type": "uint256"},
+                    {"indexed": false, "internalType": "uint256", "name": "matchIndex", "type": "uint256"},
+                    {"indexed": false, "internalType": "uint256", "name": "winner", "type": "uint256"}
                 ],
                 "name": "MatchFinished",
                 "type": "event"
@@ -481,12 +438,7 @@
             {
                 "anonymous": false,
                 "inputs": [
-                    {
-                        "indexed": false,
-                        "internalType": "uint256",
-                        "name": "round",
-                        "type": "uint256"
-                    }
+                    {"indexed": false, "internalType": "uint256", "name": "round", "type": "uint256"}
                 ],
                 "name": "RoundFinished",
                 "type": "event"
@@ -501,33 +453,16 @@
             {
                 "anonymous": false,
                 "inputs": [
-                    {
-                        "indexed": false,
-                        "internalType": "uint256",
-                        "name": "winner",
-                        "type": "uint256"
-                    }
+                    {"indexed": false, "internalType": "uint256", "name": "winner", "type": "uint256"}
                 ],
                 "name": "TournamentFinished",
                 "type": "event"
             },
             {
                 "inputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "roundNum",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "matchNum",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "participantId",
-                        "type": "uint256"
-                    }
+                    {"internalType": "uint256", "name": "roundNum", "type": "uint256"},
+                    {"internalType": "uint256", "name": "matchNum", "type": "uint256"},
+                    {"internalType": "uint256", "name": "participantId", "type": "uint256"}
                 ],
                 "name": "vote",
                 "outputs": [],
@@ -537,36 +472,11 @@
             {
                 "anonymous": false,
                 "inputs": [
-                    {
-                        "indexed": true,
-                        "internalType": "address",
-                        "name": "voter",
-                        "type": "address"
-                    },
-                    {
-                        "indexed": false,
-                        "internalType": "uint256",
-                        "name": "round",
-                        "type": "uint256"
-                    },
-                    {
-                        "indexed": false,
-                        "internalType": "uint256",
-                        "name": "matchIndex",
-                        "type": "uint256"
-                    },
-                    {
-                        "indexed": false,
-                        "internalType": "uint256",
-                        "name": "participant",
-                        "type": "uint256"
-                    },
-                    {
-                        "indexed": false,
-                        "internalType": "uint256",
-                        "name": "amount",
-                        "type": "uint256"
-                    }
+                    {"indexed": true, "internalType": "address", "name": "voter", "type": "address"},
+                    {"indexed": false, "internalType": "uint256", "name": "round", "type": "uint256"},
+                    {"indexed": false, "internalType": "uint256", "name": "matchIndex", "type": "uint256"},
+                    {"indexed": false, "internalType": "uint256", "name": "participant", "type": "uint256"},
+                    {"indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256"}
                 ],
                 "name": "VoteCast",
                 "type": "event"
@@ -574,113 +484,43 @@
             {
                 "inputs": [],
                 "name": "currentRound",
-                "outputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "",
-                        "type": "uint256"
-                    }
-                ],
+                "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
                 "stateMutability": "view",
                 "type": "function"
             },
             {
                 "inputs": [],
                 "name": "getCurrentMatches",
-                "outputs": [
-                    {
-                        "internalType": "uint256[]",
-                        "name": "",
-                        "type": "uint256[]"
-                    }
-                ],
+                "outputs": [{"internalType": "uint256[]", "name": "", "type": "uint256[]"}],
                 "stateMutability": "view",
                 "type": "function"
             },
             {
                 "inputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "roundNum",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "matchNum",
-                        "type": "uint256"
-                    }
+                    {"internalType": "uint256", "name": "roundNum", "type": "uint256"},
+                    {"internalType": "uint256", "name": "matchNum", "type": "uint256"}
                 ],
                 "name": "getMatch",
                 "outputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "participant1Id",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "participant2Id",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "votes1",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "votes2",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "winnerId",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "startTime",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "endTime",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "bool",
-                        "name": "finished",
-                        "type": "bool"
-                    }
+                    {"internalType": "uint256", "name": "participant1Id", "type": "uint256"},
+                    {"internalType": "uint256", "name": "participant2Id", "type": "uint256"},
+                    {"internalType": "uint256", "name": "votes1", "type": "uint256"},
+                    {"internalType": "uint256", "name": "votes2", "type": "uint256"},
+                    {"internalType": "uint256", "name": "winnerId", "type": "uint256"},
+                    {"internalType": "uint256", "name": "startTime", "type": "uint256"},
+                    {"internalType": "uint256", "name": "endTime", "type": "uint256"},
+                    {"internalType": "bool", "name": "finished", "type": "bool"}
                 ],
                 "stateMutability": "view",
                 "type": "function"
             },
             {
-                "inputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "id",
-                        "type": "uint256"
-                    }
-                ],
+                "inputs": [{"internalType": "uint256", "name": "id", "type": "uint256"}],
                 "name": "getParticipant",
                 "outputs": [
-                    {
-                        "internalType": "string",
-                        "name": "name",
-                        "type": "string"
-                    },
-                    {
-                        "internalType": "bool",
-                        "name": "active",
-                        "type": "bool"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "totalVotes",
-                        "type": "uint256"
-                    }
+                    {"internalType": "string", "name": "name", "type": "string"},
+                    {"internalType": "bool", "name": "active", "type": "bool"},
+                    {"internalType": "uint256", "name": "totalVotes", "type": "uint256"}
                 ],
                 "stateMutability": "view",
                 "type": "function"
@@ -688,26 +528,14 @@
             {
                 "inputs": [],
                 "name": "getParticipantCount",
-                "outputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "",
-                        "type": "uint256"
-                    }
-                ],
+                "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
                 "stateMutability": "view",
                 "type": "function"
             },
             {
                 "inputs": [],
                 "name": "getRoundCount",
-                "outputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "",
-                        "type": "uint256"
-                    }
-                ],
+                "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
                 "stateMutability": "view",
                 "type": "function"
             },
@@ -715,947 +543,451 @@
                 "inputs": [],
                 "name": "getTournamentState",
                 "outputs": [
-                    {
-                        "internalType": "enum TournamentVoting.TournamentState",
-                        "name": "tournamentState",
-                        "type": "uint8"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "round",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "totalRounds",
-                        "type": "uint256"
-                    }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "owner",
-                "outputs": [
-                    {
-                        "internalType": "address",
-                        "name": "",
-                        "type": "address"
-                    }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "",
-                        "type": "uint256"
-                    }
-                ],
-                "name": "participants",
-                "outputs": [
-                    {
-                        "internalType": "string",
-                        "name": "name",
-                        "type": "string"
-                    },
-                    {
-                        "internalType": "bool",
-                        "name": "active",
-                        "type": "bool"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "totalVotes",
-                        "type": "uint256"
-                    }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "ROUND_DURATION",
-                "outputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "",
-                        "type": "uint256"
-                    }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "",
-                        "type": "uint256"
-                    }
-                ],
-                "name": "rounds",
-                "outputs": [
-                    {
-                        "internalType": "bool",
-                        "name": "finished",
-                        "type": "bool"
-                    }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "state",
-                "outputs": [
-                    {
-                        "internalType": "enum TournamentVoting.TournamentState",
-                        "name": "",
-                        "type": "uint8"
-                    }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "treasury",
-                "outputs": [
-                    {
-                        "internalType": "address",
-                        "name": "",
-                        "type": "address"
-                    }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [
-                    {
-                        "internalType": "address",
-                        "name": "",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "",
-                        "type": "uint256"
-                    }
-                ],
-                "name": "userVotes",
-                "outputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "",
-                        "type": "uint256"
-                    }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "VOTE_COST",
-                "outputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "",
-                        "type": "uint256"
-                    }
+                    {"internalType": "enum TournamentVoting.TournamentState", "name": "tournamentState", "type": "uint8"},
+                    {"internalType": "uint256", "name": "round", "type": "uint256"},
+                    {"internalType": "uint256", "name": "totalRounds", "type": "uint256"}
                 ],
                 "stateMutability": "view",
                 "type": "function"
             }
         ];
-        
-        const MONAD_TESTNET = {
-            chainId: '0x279F', // 10143 in hex
-            chainName: 'Monad Testnet',
-            rpcUrls: ['https://testnet-rpc.monad.xyz'],
-            nativeCurrency: {
-                name: 'MON',
-                symbol: 'MON',
-                decimals: 18
-            },
-            blockExplorerUrls: ['https://testnet-explorer.monad.xyz']
-        };
 
-        let web3;
-        let contract;
-        let account;
-        let isOwner = false;
-        let tournamentData = {
-            participants: [
-                'LUMITERRA', 'KURU EXCHANGE', 'KIZZY MOBILE', 'CRYSTAL',
-                'CULT', 'aPriori', 'Magma', 'O.LAB'
-            ],
-            currentRound: 0,
-            rounds: []
-        };
+        // Participants list
+        const PARTICIPANTS = [
+            'LUMITERRA', 'KURU EXCHANGE', 'KIZZY MOBILE', 'CRYSTAL',
+            'CULT', 'aPriori', 'Magma', 'O.LAB'
+        ];
 
-        // Initialize on page load
-        window.addEventListener('load', function() {
-            if (typeof window.ethereum !== 'undefined') {
-                web3 = new Web3(window.ethereum);
-                setupContract();
-                checkConnection();
-            } else {
-                showStatus('Please install MetaMask to use this application!', 'error');
-            }
-            
-            generateInitialBracket();
-            setInterval(updateTournament, 10000); // Update every 10 seconds
+        // Global variables
+        let provider = null;
+        let signer = null;
+        let contract = null;
+        let userAccount = null;
+        let tournamentData = {};
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
         });
 
-        async function checkConnection() {
+        async function initializeApp() {
             try {
-                const accounts = await ethereum.request({ method: 'eth_accounts' });
-                if (accounts.length > 0) {
-                    account = accounts[0];
-                    updateWalletDisplay();
-                    updateBalance();
-                    await checkOwnership();
+                // Check if MetaMask is installed
+                if (typeof window.ethereum === 'undefined') {
+                    showError('Please install MetaMask to use this application');
+                    return;
                 }
+
+                // Setup event listeners
+                document.getElementById('connectWallet').addEventListener('click', connectWallet);
+
+                // Check if already connected
+                const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                if (accounts.length > 0) {
+                    await connectWallet();
+                }
+
+                // Load tournament data
+                await loadTournamentData();
             } catch (error) {
-                console.error('Error checking connection:', error);
+                console.error('Initialization error:', error);
+                showError('Failed to initialize application');
             }
         }
 
         async function connectWallet() {
             try {
+                const connectBtn = document.getElementById('connectWallet');
+                connectBtn.disabled = true;
+                connectBtn.textContent = 'Connecting...';
+
                 // Request account access
-                const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
-                account = accounts[0];
-                
-                // Switch to Monad testnet
-                try {
-                    await ethereum.request({
-                        method: 'wallet_switchEthereumChain',
-                        params: [{ chainId: MONAD_TESTNET.chainId }],
-                    });
-                } catch (switchError) {
-                    if (switchError.code === 4902) {
-                        await ethereum.request({
-                            method: 'wallet_addEthereumChain',
-                            params: [MONAD_TESTNET],
-                        });
-                    } else {
-                        throw switchError;
-                    }
+                const accounts = await window.ethereum.request({ 
+                    method: 'eth_requestAccounts' 
+                });
+
+                if (accounts.length === 0) {
+                    throw new Error('No accounts found');
                 }
-                
-                updateWalletDisplay();
-                updateBalance();
-                await checkOwnership();
-                showStatus('Wallet connected successfully!', 'success');
+
+                userAccount = accounts[0];
+
+                // Setup provider and signer
+                provider = new ethers.BrowserProvider(window.ethereum);
+                signer = await provider.getSigner();
+                contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+                // Check/switch network
+                await switchToMonadTestnet();
+
+                // Get balance
+                const balance = await provider.getBalance(userAccount);
+                const balanceInMon = ethers.formatEther(balance);
+
+                // Update UI
+                document.getElementById('walletInfo').style.display = 'block';
+                document.getElementById('walletAddress').textContent = 
+                    `${userAccount.substring(0, 6)}...${userAccount.substring(38)}`;
+                document.getElementById('walletBalance').textContent = 
+                    `${parseFloat(balanceInMon).toFixed(4)} MON`;
+
+                connectBtn.style.display = 'none';
+
+                // Load tournament data
+                await loadTournamentData();
+
             } catch (error) {
-                console.error('Error connecting wallet:', error);
-                showStatus('Failed to connect wallet: ' + error.message, 'error');
+                console.error('Connection error:', error);
+                showError('Failed to connect wallet: ' + error.message);
+                document.getElementById('connectWallet').disabled = false;
+                document.getElementById('connectWallet').textContent = 'Connect Wallet';
             }
         }
 
-        function setupContract() {
-            if (CONTRACT_ADDRESS) {
-                contract = new web3.eth.Contract(CONTRACT_ABI, CONTRACT_ADDRESS);
-            }
-        }
-
-        async function checkOwnership() {
-            if (contract && account) {
-                try {
-                    const owner = await contract.methods.owner().call();
-                    isOwner = owner.toLowerCase() === account.toLowerCase();
-                    
-                    const adminSection = document.getElementById('adminSection');
-                    if (isOwner) {
-                        adminSection.classList.add('visible');
-                    } else {
-                        adminSection.classList.remove('visible');
+        async function switchToMonadTestnet() {
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: `0x${CHAIN_ID.toString(16)}` }],
+                });
+            } catch (switchError) {
+                if (switchError.code === 4902) {
+                    try {
+                        await window.ethereum.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [{
+                                chainId: `0x${CHAIN_ID.toString(16)}`,
+                                chainName: 'Monad Testnet',
+                                nativeCurrency: {
+                                    name: 'MON',
+                                    symbol: 'MON',
+                                    decimals: 18
+                                },
+                                rpcUrls: [RPC_URL],
+                                blockExplorerUrls: ['https://testnet-explorer.monad.xyz/']
+                            }]
+                        });
+                    } catch (addError) {
+                        throw new Error('Failed to add Monad Testnet');
                     }
-                } catch (error) {
-                    console.error('Error checking ownership:', error);
+                } else {
+                    throw switchError;
                 }
             }
         }
 
-        function updateWalletDisplay() {
-            const addressElement = document.getElementById('walletAddress');
-            const connectButton = document.getElementById('connectWallet');
-            
-            if (account) {
-                addressElement.textContent = `${account.substring(0, 6)}...${account.substring(38)}`;
-                connectButton.textContent = 'Connected';
-                connectButton.disabled = true;
-            }
-        }
-
-        async function updateBalance() {
-            if (account && web3) {
-                try {
-                    const balance = await web3.eth.getBalance(account);
-                    const balanceInEther = web3.utils.fromWei(balance, 'ether');
-                    document.getElementById('balance').textContent = `${parseFloat(balanceInEther).toFixed(4)} MON`;
-                } catch (error) {
-                    console.error('Error getting balance:', error);
+        async function loadTournamentData() {
+            try {
+                if (!contract) {
+                    // Use read-only provider if no wallet connected
+                    provider = new ethers.JsonRpcProvider(RPC_URL);
+                    contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
                 }
+
+                // Get tournament state
+                const [tournamentState, currentRound, totalRounds] = await contract.getTournamentState();
+                const roundCount = await contract.getRoundCount();
+
+                // Update UI
+                document.getElementById('currentRound').textContent = currentRound.toString();
+                document.getElementById('totalRounds').textContent = totalRounds.toString();
+                
+                const stateNames = ['Setup', 'Active', 'Finished'];
+                document.getElementById('tournamentState').textContent = stateNames[tournamentState] || 'Unknown';
+
+                // Load bracket data
+                await loadBracketData(currentRound, totalRounds);
+
+            } catch (error) {
+                console.error('Load tournament data error:', error);
+                showError('Failed to load tournament data');
             }
         }
 
-        function generateInitialBracket() {
-            const bracket = document.getElementById('bracket');
-            
-            // Round 1 (Quarterfinals)
-            const round1 = createRound('Quarterfinals', [
-                { p1: 0, p2: 1, p1Name: 'LUMITERRA', p2Name: 'KURU EXCHANGE' },
-                { p1: 2, p2: 3, p1Name: 'KIZZY MOBILE', p2Name: 'CRYSTAL' },
-                { p1: 4, p2: 5, p1Name: 'CULT', p2Name: 'aPriori' },
-                { p1: 6, p2: 7, p1Name: 'Magma', p2Name: 'O.LAB' }
-            ]);
-            
-            // Round 2 (Semifinals)
-            const round2 = createRound('Semifinals', [
-                { p1: null, p2: null, p1Name: 'TBD', p2Name: 'TBD' },
-                { p1: null, p2: null, p1Name: 'TBD', p2Name: 'TBD' }
-            ]);
-            
-            // Round 3 (Final)
-            const round3 = createRound('Final', [
-                { p1: null, p2: null, p1Name: 'TBD', p2Name: 'TBD' }
-            ]);
-            
-            bracket.appendChild(round1);
-            bracket.appendChild(round2);
-            bracket.appendChild(round3);
+        async function loadBracketData(currentRound, totalRounds) {
+            try {
+                const bracket = document.getElementById('tournamentContent');
+                bracket.innerHTML = '';
+
+                // Create bracket structure
+                const bracketContainer = document.createElement('div');
+                bracketContainer.className = 'bracket-container';
+
+                const bracketDiv = document.createElement('div');
+                bracketDiv.className = 'bracket';
+
+                // Round 1: Quarter Finals (4 matches)
+                const round1 = await createRound(1, 4, 'Quarter Finals');
+                bracketDiv.appendChild(round1);
+
+                // Round 2: Semi Finals (2 matches)
+                const round2 = await createRound(2, 2, 'Semi Finals');
+                bracketDiv.appendChild(round2);
+
+                // Round 3: Final (1 match)
+                const round3 = await createRound(3, 1, 'Final');
+                bracketDiv.appendChild(round3);
+
+                bracketContainer.appendChild(bracketDiv);
+                bracket.appendChild(bracketContainer);
+
+                // Check for tournament winner
+                if (totalRounds > 0 && currentRound > totalRounds) {
+                    await displayTournamentWinner();
+                }
+
+            } catch (error) {
+                console.error('Load bracket data error:', error);
+                showError('Failed to load bracket data');
+            }
         }
 
-        function createRound(title, matches) {
-            const round = document.createElement('div');
-            round.className = 'round';
-            
+        async function createRound(roundNum, matchCount, title) {
+            const roundDiv = document.createElement('div');
+            roundDiv.className = 'round';
+            roundDiv.style.position = 'relative';
+
             const titleEl = document.createElement('h3');
             titleEl.textContent = title;
-            round.appendChild(titleEl);
-            
-            matches.forEach((match, index) => {
-                const matchEl = document.createElement('div');
-                matchEl.className = 'match active';
-                matchEl.innerHTML = `
-                    <div class="timer" id="timer-${title}-${index}">24:00:00</div>
-                    <div class="participant" onclick="openVoteModal(${match.p1}, '${match.p1Name}', '${title}', ${index})">
-                        <span class="participant-name">${match.p1Name}</span>
-                        <span class="votes" id="votes-${title}-${index}-1">0</span>
-                    </div>
-                    <div class="participant" onclick="openVoteModal(${match.p2}, '${match.p2Name}', '${title}', ${index})">
-                        <span class="participant-name">${match.p2Name}</span>
-                        <span class="votes" id="votes-${title}-${index}-2">0</span>
-                    </div>
-                `;
-                round.appendChild(matchEl);
-            });
-            
-            return round;
+            roundDiv.appendChild(titleEl);
+
+            const matchesDiv = document.createElement('div');
+            matchesDiv.className = 'matches';
+
+            for (let i = 0; i < matchCount; i++) {
+                const matchDiv = await createMatch(roundNum, i);
+                matchesDiv.appendChild(matchDiv);
+            }
+
+            roundDiv.appendChild(matchesDiv);
+
+            // Add connection lines
+            if (roundNum < 3) {
+                const connections = document.createElement('div');
+                connections.className = 'connections';
+                roundDiv.appendChild(connections);
+            }
+
+            return roundDiv;
         }
 
-        let currentVoteData = {};
+        async function createMatch(roundNum, matchNum) {
+            const matchDiv = document.createElement('div');
+            matchDiv.className = 'match';
 
-        function openVoteModal(participantId, participantName, round, matchIndex) {
-            if (!account) {
-                showStatus('Please connect your wallet first!', 'error');
-                return;
-            }
-            
-            currentVoteData = { participantId, participantName, round, matchIndex };
-            
-            const modal = document.getElementById('voteModal');
-            const voteButtons = document.getElementById('voteButtons');
-            
-            voteButtons.innerHTML = `
-                <button class="vote-btn" onclick="castVote()">
-                    Vote for ${participantName}
-                </button>
-            `;
-            
-            modal.style.display = 'flex';
-        }
-
-        function closeVoteModal() {
-            document.getElementById('voteModal').style.display = 'none';
-        }
-
-        async function castVote() {
-            if (!contract) {
-                showStatus('Contract not initialized. Please ensure you are connected to Monad testnet.', 'error');
-                return;
-            }
-            
-            if (!account) {
-                showStatus('Please connect your wallet first!', 'error');
-                return;
-            }
-            
             try {
-                showStatus('Checking prerequisites...', 'info');
-                
-                // Check network
-                const chainId = await web3.eth.getChainId();
-                if (chainId !== 10143) {
-                    showStatus('Please switch to Monad Testnet (Chain ID: 10143)', 'error');
-                    return;
+                const matchData = await contract.getMatch(roundNum, matchNum);
+                const [participant1Id, participant2Id, votes1, votes2, winnerId, startTime, endTime, finished] = matchData;
+
+                // Get participant names
+                let participant1Name = 'TBD';
+                let participant2Name = 'TBD';
+
+                if (participant1Id > 0) {
+                    participant1Name = PARTICIPANTS[Number(participant1Id) - 1] || `Participant ${participant1Id}`;
                 }
-                
-                // Check balance
-                const balance = await web3.eth.getBalance(account);
-                const balanceInEther = parseFloat(web3.utils.fromWei(balance, 'ether'));
-                if (balanceInEther < 0.1) {
-                    showStatus('Insufficient balance. You need at least 0.1 MON to vote.', 'error');
-                    return;
+                if (participant2Id > 0) {
+                    participant2Name = PARTICIPANTS[Number(participant2Id) - 1] || `Participant ${participant2Id}`;
                 }
-                
-                showStatus('Processing vote...', 'info');
-                
-                const roundNum = getCurrentRoundNumber(currentVoteData.round);
-                const voteValue = web3.utils.toWei('0.1', 'ether');
-                
-                console.log('Vote parameters:', {
+
+                // Create participant elements
+                const participant1Div = createParticipantElement(
+                    participant1Name, 
+                    votes1, 
+                    winnerId === participant1Id && finished,
                     roundNum,
-                    matchIndex: currentVoteData.matchIndex,
-                    participantId: currentVoteData.participantId,
-                    voteValue,
-                    from: account
-                });
-                
-                // Check if tournament is active first
-                try {
-                    const tournamentState = await contract.methods.getTournamentState().call();
-                    console.log('Tournament state:', tournamentState);
+                    matchNum,
+                    participant1Id,
+                    finished
+                );
+
+                const participant2Div = createParticipantElement(
+                    participant2Name, 
+                    votes2, 
+                    winnerId === participant2Id && finished,
+                    roundNum,
+                    matchNum,
+                    participant2Id,
+                    finished
+                );
+
+                matchDiv.appendChild(participant1Div);
+                matchDiv.appendChild(participant2Div);
+
+                // Add timer if match is active
+                if (!finished && startTime > 0) {
+                    const timerDiv = document.createElement('div');
+                    timerDiv.className = 'timer';
+                    const endTimeMs = Number(endTime) * 1000;
+                    const now = Date.now();
                     
-                    if (parseInt(tournamentState.tournamentState) === 0) {
-                        showStatus('Tournament has not started yet. Please wait for the owner to start the tournament.', 'error');
-                        return;
+                    if (now < endTimeMs) {
+                        const remaining = Math.floor((endTimeMs - now) / 1000);
+                        const hours = Math.floor(remaining / 3600);
+                        const minutes = Math.floor((remaining % 3600) / 60);
+                        const seconds = remaining % 60;
+                        timerDiv.textContent = `Time left: ${hours}h ${minutes}m ${seconds}s`;
+                    } else {
+                        timerDiv.textContent = 'Match expired';
+                        timerDiv.className = 'timer expired';
                     }
                     
-                    if (parseInt(tournamentState.tournamentState) === 2) {
-                        showStatus('Tournament has already finished!', 'error');
-                        return;
-                    }
-                } catch (stateError) {
-                    console.log('Could not check tournament state:', stateError);
+                    matchDiv.appendChild(timerDiv);
                 }
-                
-                // Try to estimate gas first
-                let gasEstimate;
-                try {
-                    gasEstimate = await contract.methods.vote(
-                        roundNum,
-                        currentVoteData.matchIndex,
-                        currentVoteData.participantId
-                    ).estimateGas({
-                        from: account,
-                        value: voteValue
-                    });
-                    console.log('Gas estimate:', gasEstimate);
-                } catch (gasError) {
-                    console.error('Gas estimation failed:', gasError);
-                    showStatus('Transaction would fail: ' + gasError.message, 'error');
+
+            } catch (error) {
+                console.error(`Error loading match ${roundNum}-${matchNum}:`, error);
+                matchDiv.innerHTML = '<div class="error">Failed to load match data</div>';
+            }
+
+            return matchDiv;
+        }
+
+        function createParticipantElement(name, votes, isWinner, roundNum, matchNum, participantId, matchFinished) {
+            const participantDiv = document.createElement('div');
+            participantDiv.className = 'participant';
+            
+            if (isWinner) {
+                participantDiv.classList.add('winner');
+            }
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'participant-name';
+            nameSpan.textContent = name;
+
+            const voteInfoDiv = document.createElement('div');
+            voteInfoDiv.className = 'vote-info';
+
+            const votesSpan = document.createElement('span');
+            votesSpan.className = 'votes';
+            votesSpan.textContent = `${votes} votes`;
+
+            voteInfoDiv.appendChild(votesSpan);
+
+            // Add vote button if wallet connected, match not finished, and participant exists
+            if (userAccount && !matchFinished && participantId > 0 && name !== 'TBD') {
+                const voteBtn = document.createElement('button');
+                voteBtn.className = 'vote-btn';
+                voteBtn.textContent = 'Vote';
+                voteBtn.onclick = () => castVote(roundNum, matchNum, participantId);
+                voteInfoDiv.appendChild(voteBtn);
+            }
+
+            participantDiv.appendChild(nameSpan);
+            participantDiv.appendChild(voteInfoDiv);
+
+            return participantDiv;
+        }
+
+        async function castVote(roundNum, matchNum, participantId) {
+            try {
+                if (!signer) {
+                    alert('Please connect your wallet first');
                     return;
                 }
-                
-                // Send transaction
-                const tx = await contract.methods.vote(
-                    roundNum,
-                    currentVoteData.matchIndex,
-                    currentVoteData.participantId
-                ).send({
-                    from: account,
-                    value: voteValue,
-                    gas: Math.floor(gasEstimate * 1.2), // Add 20% buffer
-                    gasPrice: web3.utils.toWei('20', 'gwei') // Set explicit gas price
+
+                const result = confirm(`Vote for this participant? Cost: 0.1 MON`);
+                if (!result) return;
+
+                // Cast vote
+                const tx = await contract.vote(roundNum, matchNum, participantId, {
+                    value: VOTE_COST
                 });
+
+                alert('Vote transaction sent! Waiting for confirmation...');
                 
-                showStatus(`Vote cast successfully! Transaction: ${tx.transactionHash}`, 'success');
-                console.log('Transaction successful:', tx);
+                await tx.wait();
                 
-                closeVoteModal();
-                updateBalance();
-                updateTournament();
+                alert('Vote cast successfully!');
                 
+                // Reload tournament data to update votes
+                await loadTournamentData();
+
             } catch (error) {
-                console.error('Error casting vote:', error);
+                console.error('Vote error:', error);
+                let errorMessage = 'Failed to cast vote';
                 
-                let errorMessage = 'Failed to cast vote: ';
-                if (error.message.includes('execution reverted')) {
-                    if (error.message.includes('Tournament not active')) {
-                        errorMessage += 'Tournament is not currently active';
-                    } else if (error.message.includes('Match not active')) {
-                        errorMessage += 'This match is not currently accepting votes';
-                    } else if (error.message.includes('insufficient funds')) {
-                        errorMessage += 'Insufficient funds for transaction';
-                    } else {
-                        errorMessage += 'Smart contract rejected the transaction';
-                    }
-                } else if (error.code === 4001) {
-                    errorMessage += 'Transaction rejected by user';
-                } else if (error.message.includes('network')) {
-                    errorMessage += 'Network connection error';
-                } else {
-                    errorMessage += error.message;
+                if (error.message.includes('insufficient funds')) {
+                    errorMessage = 'Insufficient funds to cast vote';
+                } else if (error.message.includes('user rejected')) {
+                    errorMessage = 'Transaction rejected by user';
                 }
                 
-                showStatus(errorMessage, 'error');
+                alert(errorMessage);
             }
         }
 
-        function getCurrentRoundNumber(roundName) {
-            switch (roundName) {
-                case 'Quarterfinals': return 0;
-                case 'Semifinals': return 1;
-                case 'Final': return 2;
-                default: return 0;
-            }
-        }
-
-        async function updateTournament() {
-            if (!contract) {
-                // Simulate tournament progress for demo
-                simulateTournamentProgress();
-                return;
-            }
-            
+        async function displayTournamentWinner() {
             try {
-                const state = await contract.methods.getTournamentState().call();
-                document.getElementById('currentRound').textContent = getRoundName(state.round);
-                document.getElementById('tournamentStatus').textContent = getTournamentStatusText(state.tournamentState);
+                // Get the final match winner
+                const finalMatch = await contract.getMatch(3, 0);
+                const winnerId = finalMatch[4];
                 
-                // Get current round matches count
-                const roundCount = await contract.methods.getRoundCount().call();
-                const currentRoundNum = parseInt(state.round);
-                
-                if (currentRoundNum < roundCount) {
-                    // Update matches for current round
-                    const matchesInRound = getMatchesInRound(currentRoundNum);
-                    for (let i = 0; i < matchesInRound; i++) {
-                        try {
-                            const match = await contract.methods.getMatch(currentRoundNum, i).call();
-                            updateMatchDisplay(currentRoundNum, i, match);
-                        } catch (matchError) {
-                            console.log(`Match ${i} in round ${currentRoundNum} not found or not started`);
-                        }
-                    }
-                }
-                
-            } catch (error) {
-                console.error('Error updating tournament:', error);
-                // Fallback to simulation
-                simulateTournamentProgress();
-            }
-        }
-
-        function getMatchesInRound(roundNum) {
-            switch (roundNum) {
-                case 0: return 4; // Quarterfinals
-                case 1: return 2; // Semifinals
-                case 2: return 1; // Final
-                default: return 0;
-            }
-        }
-
-        function simulateTournamentProgress() {
-            // This simulates the tournament for demo purposes
-            const matches = document.querySelectorAll('.match');
-            matches.forEach((match, index) => {
-                const votes1 = match.querySelector('.votes[id*="-1"]');
-                const votes2 = match.querySelector('.votes[id*="-2"]');
-                
-                if (votes1 && votes2) {
-                    const currentVotes1 = parseInt(votes1.textContent) || 0;
-                    const currentVotes2 = parseInt(votes2.textContent) || 0;
+                if (winnerId > 0) {
+                    const winnerName = PARTICIPANTS[Number(winnerId) - 1] || `Participant ${winnerId}`;
                     
-                    // Randomly add votes (10% chance per update)
-                    if (Math.random() < 0.1) {
-                        if (Math.random() < 0.5) {
-                            votes1.textContent = currentVotes1 + Math.floor(Math.random() * 3) + 1;
-                        } else {
-                            votes2.textContent = currentVotes2 + Math.floor(Math.random() * 3) + 1;
-                        }
-                    }
-                }
-            });
-            
-            updateTimers();
-        }
-
-        function updateTimers() {
-            const timers = document.querySelectorAll('.timer');
-            timers.forEach(timer => {
-                if (!timer.classList.contains('finished')) {
-                    const currentTime = timer.textContent;
-                    const [hours, minutes, seconds] = currentTime.split(':').map(Number);
+                    const winnerDiv = document.createElement('div');
+                    winnerDiv.className = 'final-winner';
+                    winnerDiv.innerHTML = `
+                        <h2>🏆 Tournament Winner 🏆</h2>
+                        <h3>${winnerName}</h3>
+                        <p>Congratulations on winning the tournament!</p>
+                    `;
                     
-                    let totalSeconds = hours * 3600 + minutes * 60 + seconds;
-                    totalSeconds = Math.max(0, totalSeconds - 10); // Decrease by 10 seconds
-                    
-                    if (totalSeconds === 0) {
-                        timer.textContent = 'FINISHED';
-                        timer.classList.add('finished');
-                        timer.parentElement.classList.remove('active');
-                        timer.parentElement.classList.add('finished');
-                        
-                        // Determine winner
-                        const participants = timer.parentElement.querySelectorAll('.participant');
-                        const votes1 = parseInt(participants[0].querySelector('.votes').textContent);
-                        const votes2 = parseInt(participants[1].querySelector('.votes').textContent);
-                        
-                        if (votes1 > votes2) {
-                            participants[0].classList.add('winner');
-                        } else if (votes2 > votes1) {
-                            participants[1].classList.add('winner');
-                        } else {
-                            participants[0].classList.add('winner'); // Tie-breaker
-                        }
-                    } else {
-                        const newHours = Math.floor(totalSeconds / 3600);
-                        const newMinutes = Math.floor((totalSeconds % 3600) / 60);
-                        const newSecs = totalSeconds % 60;
-                        
-                        timer.textContent = `${newHours.toString().padStart(2, '0')}:${newMinutes.toString().padStart(2, '0')}:${newSecs.toString().padStart(2, '0')}`;
-                    }
+                    document.getElementById('tournamentContent').appendChild(winnerDiv);
                 }
-            });
-        }
-
-        function updateMatchDisplay(roundNum, matchIndex, matchData) {
-            const roundName = getRoundName(roundNum);
-            const votes1Element = document.getElementById(`votes-${roundName}-${matchIndex}-1`);
-            const votes2Element = document.getElementById(`votes-${roundName}-${matchIndex}-2`);
-            const timerElement = document.getElementById(`timer-${roundName}-${matchIndex}`);
-            
-            if (votes1Element) votes1Element.textContent = matchData.votes1;
-            if (votes2Element) votes2Element.textContent = matchData.votes2;
-            
-            if (matchData.finished && timerElement) {
-                timerElement.textContent = 'FINISHED';
-                timerElement.classList.add('finished');
-                
-                const matchElement = timerElement.parentElement;
-                matchElement.classList.remove('active');
-                matchElement.classList.add('finished');
-                
-                // Highlight winner
-                const participants = matchElement.querySelectorAll('.participant');
-                if (matchData.winnerId === matchData.participant1Id) {
-                    participants[0].classList.add('winner');
-                } else if (matchData.winnerId === matchData.participant2Id) {
-                    participants[1].classList.add('winner');
-                }
-            } else if (timerElement && matchData.endTime) {
-                // Update timer based on contract data
-                const now = Math.floor(Date.now() / 1000);
-                const timeLeft = Math.max(0, matchData.endTime - now);
-                
-                if (timeLeft > 0) {
-                    const hours = Math.floor(timeLeft / 3600);
-                    const minutes = Math.floor((timeLeft % 3600) / 60);
-                    const seconds = timeLeft % 60;
-                    timerElement.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                } else {
-                    timerElement.textContent = 'EXPIRED';
-                    timerElement.style.background = 'rgba(255, 152, 0, 0.8)';
-                }
-            }
-        }
-
-        function getRoundName(roundNum) {
-            switch (parseInt(roundNum)) {
-                case 0: return 'Quarterfinals';
-                case 1: return 'Semifinals';
-                case 2: return 'Final';
-                default: return 'Setup';
-            }
-        }
-
-        function getTournamentStatusText(state) {
-            switch (parseInt(state)) {
-                case 0: return 'Setup Phase';
-                case 1: return 'Active Tournament';
-                case 2: return 'Tournament Complete';
-                default: return 'Unknown Status';
-            }
-        }
-
-        function showStatus(message, type) {
-            const statusDiv = document.getElementById('statusMessage');
-            statusDiv.textContent = message;
-            statusDiv.style.display = 'block';
-            
-            statusDiv.style.background = type === 'error' ? 'rgba(255, 107, 107, 0.8)' :
-                                      type === 'success' ? 'rgba(76, 175, 80, 0.8)' :
-                                      'rgba(255, 255, 255, 0.1)';
-            
-            setTimeout(() => {
-                statusDiv.style.display = 'none';
-            }, 5000);
-        }
-
-        // Admin functions
-        async function startTournament() {
-            if (!contract || !isOwner) {
-                showStatus('Only contract owner can start tournament!', 'error');
-                return;
-            }
-            
-            try {
-                showStatus('Starting tournament...', 'info');
-                const tx = await contract.methods.startTournament().send({ 
-                    from: account,
-                    gas: 500000
-                });
-                showStatus(`Tournament started! Transaction: ${tx.transactionHash}`, 'success');
-                updateTournament();
             } catch (error) {
-                console.error('Error starting tournament:', error);
-                showStatus('Failed to start tournament: ' + error.message, 'error');
+                console.error('Error displaying tournament winner:', error);
             }
         }
 
-        async function forceFinishExpiredMatches() {
-            if (!contract) {
-                showStatus('Contract not available!', 'error');
-                return;
-            }
-            
-            try {
-                showStatus('Finishing expired matches...', 'info');
-                const tx = await contract.methods.forceFinishExpiredMatches().send({ 
-                    from: account,
-                    gas: 500000
-                });
-                showStatus(`Expired matches finished! Transaction: ${tx.transactionHash}`, 'success');
-                updateTournament();
-            } catch (error) {
-                console.error('Error finishing expired matches:', error);
-                showStatus('Failed to finish expired matches: ' + error.message, 'error');
-            }
+        function showError(message) {
+            const tournamentContent = document.getElementById('tournamentContent');
+            tournamentContent.innerHTML = `<div class="error">${message}</div>`;
         }
 
-        async function checkTournamentStatus() {
-            if (!contract) {
-                showStatus('Contract not available!', 'error');
-                return;
+        // Auto refresh every 30 seconds
+        setInterval(async () => {
+            if (contract) {
+                await loadTournamentData();
             }
-            
-            try {
-                console.log('=== TOURNAMENT DEBUG INFO ===');
-                
-                const state = await contract.methods.getTournamentState().call();
-                const participantCount = await contract.methods.getParticipantCount().call();
-                const roundCount = await contract.methods.getRoundCount().call();
-                const currentRound = await contract.methods.currentRound().call();
-                
-                console.log('Tournament State:', {
-                    state: state.tournamentState,
-                    currentRound: state.round,
-                    totalRounds: state.totalRounds,
-                    participantCount: participantCount,
-                    roundCount: roundCount,
-                    currentRoundDirect: currentRound
-                });
-                
-                // Check each participant
-                console.log('=== PARTICIPANTS ===');
-                for (let i = 0; i < participantCount; i++) {
-                    try {
-                        const participant = await contract.methods.getParticipant(i).call();
-                        console.log(`Participant ${i}:`, participant);
-                    } catch (e) {
-                        console.log(`Participant ${i}: Error -`, e.message);
-                    }
-                }
-                
-                // Check current matches
-                console.log('=== CURRENT MATCHES ===');
-                try {
-                    const currentMatches = await contract.methods.getCurrentMatches().call();
-                    console.log('Current matches:', currentMatches);
-                    
-                    for (let i = 0; i < currentMatches.length; i++) {
-                        try {
-                            const match = await contract.methods.getMatch(currentRound, i).call();
-                            console.log(`Match ${i}:`, match);
-                        } catch (e) {
-                            console.log(`Match ${i}: Error -`, e.message);
-                        }
-                    }
-                } catch (e) {
-                    console.log('Error getting current matches:', e.message);
-                }
-                
-                // Check contract owner
-                try {
-                    const owner = await contract.methods.owner().call();
-                    console.log('Contract owner:', owner);
-                    console.log('Current account:', account);
-                    console.log('Is owner?', owner.toLowerCase() === account?.toLowerCase());
-                } catch (e) {
-                    console.log('Error getting owner:', e.message);
-                }
-                
-                // Check vote cost and round duration
-                try {
-                    const voteCost = await contract.methods.VOTE_COST().call();
-                    const roundDuration = await contract.methods.ROUND_DURATION().call();
-                    console.log('Vote cost:', web3.utils.fromWei(voteCost, 'ether'), 'ETH');
-                    console.log('Round duration:', roundDuration, 'seconds');
-                } catch (e) {
-                    console.log('Error getting constants:', e.message);
-                }
-                
-                showStatus(`Status: ${getTournamentStatusText(state.tournamentState)}, Round: ${parseInt(state.round) + 1}/${state.totalRounds}, Participants: ${participantCount}`, 'info');
-                
-            } catch (error) {
-                console.error('Error checking tournament status:', error);
-                showStatus('Failed to check tournament status: ' + error.message, 'error');
-            }
-        }
+        }, 30000);
 
-        // Event listeners
-        document.getElementById('connectWallet').addEventListener('click', connectWallet);
-
-        // Handle account changes
+        // Listen for account changes
         if (window.ethereum) {
-            ethereum.on('accountsChanged', function (accounts) {
+            window.ethereum.on('accountsChanged', function (accounts) {
                 if (accounts.length === 0) {
-                    account = null;
-                    isOwner = false;
-                    document.getElementById('walletAddress').textContent = 'Not connected';
-                    document.getElementById('connectWallet').textContent = 'Connect Wallet';
+                    // User disconnected
+                    userAccount = null;
+                    provider = null;
+                    signer = null;
+                    contract = null;
+                    
+                    document.getElementById('walletInfo').style.display = 'none';
+                    document.getElementById('connectWallet').style.display = 'block';
                     document.getElementById('connectWallet').disabled = false;
-                    document.getElementById('adminSection').classList.remove('visible');
+                    document.getElementById('connectWallet').textContent = 'Connect Wallet';
                 } else {
-                    account = accounts[0];
-                    updateWalletDisplay();
-                    updateBalance();
-                    checkOwnership();
+                    // Account changed
+                    connectWallet();
                 }
             });
 
-            ethereum.on('chainChanged', function (chainId) {
-                if (chainId !== MONAD_TESTNET.chainId) {
-                    showStatus('Please switch to Monad Testnet (Chain ID: 10143)', 'error');
-                }
+            window.ethereum.on('chainChanged', function (chainId) {
+                // Reload page on network change
+                window.location.reload();
             });
         }
 
-        // Real-time event listening
-        function setupEventListeners() {
-            if (contract) {
-                // Listen for vote events
-                contract.events.VoteCast({})
-                .on('data', function(event) {
-                    console.log('Vote cast:', event.returnValues);
-                    updateTournament();
-                })
-                .on('error', console.error);
-                
-                // Listen for match finished events
-                contract.events.MatchFinished({})
-                .on('data', function(event) {
-                    console.log('Match finished:', event.returnValues);
-                    showStatus(`Match ${event.returnValues.matchIndex} in round ${event.returnValues.round} finished!`, 'success');
-                    updateTournament();
-                })
-                .on('error', console.error);
-                
-                // Listen for tournament finished events
-                contract.events.TournamentFinished({})
-                .on('data', function(event) {
-                    console.log('Tournament finished:', event.returnValues);
-                    showStatus(`🎉 Tournament finished! Winner: Participant ${event.returnValues.winner}`, 'success');
-                    updateTournament();
-                })
-                .on('error', console.error);
-            }
+        // WebSocket for real-time updates (simulation)
+        function setupWebSocket() {
+            // In a real implementation, you would connect to a WebSocket server
+            // For now, we'll use the auto-refresh mechanism above
+            console.log('WebSocket setup (simulated with polling)');
         }
 
-        // Start event listeners after contract setup
-        setTimeout(setupEventListeners, 2000);
-
-        // Auto-advance logic
-        function checkAutoAdvance() {
-            const finishedMatches = document.querySelectorAll('.match.finished');
-            const activeMatches = document.querySelectorAll('.match.active');
-            
-            if (activeMatches.length === 0 && finishedMatches.length > 0) {
-                console.log('Round finished, checking for auto-advance...');
-                setTimeout(() => {
-                    updateBracketForNextRound();
-                }, 2000);
-            }
-        }
-
-        function updateBracketForNextRound() {
-            const winners = document.querySelectorAll('.participant.winner .participant-name');
-            
-            if (winners.length >= 2) {
-                const tbdElements = document.querySelectorAll('.participant-name');
-                let tbdCount = 0;
-                
-                tbdElements.forEach(element => {
-                    if (element.textContent === 'TBD' && tbdCount < winners.length) {
-                        element.textContent = winners[tbdCount].textContent;
-                        const newParticipantId = Array.from(document.querySelectorAll('.participant-name'))
-                            .indexOf(element);
-                        
-                        element.parentElement.onclick = () => {
-                            openVoteModal(newParticipantId, element.textContent, 'Semifinals', 0);
-                        };
-                        tbdCount++;
-                    }
-                });
-                
-                // Reset timers for new round
-                const newTimers = document.querySelectorAll('.round:not(:first-child) .timer:not(.finished)');
-                newTimers.forEach(timer => {
-                    timer.textContent = '24:00:00';
-                    timer.classList.remove('finished');
-                    timer.parentElement.classList.add('active');
-                    timer.parentElement.classList.remove('finished');
-                });
-            }
-        }
-
-        // Periodic checks
-        setInterval(checkAutoAdvance, 30000); // Every 30 seconds
-        setInterval(() => {
-            if (contract) {
-                forceFinishExpiredMatches();
-            }
-        }, 60000); // Every minute
-
-        // Network status check
-        async function checkNetworkStatus() {
-            if (web3) {
-                try {
-                    const chainId = await web3.eth.getChainId();
-                    if (chainId !== 10143) {
-                        showStatus('Please switch to Monad Testnet', 'error');
-                    }
-                } catch (error) {
-                    console.error('Network check error:', error);
-                }
-            }
-        }
-
-        setInterval(checkNetworkStatus, 30000); // Check every 30 seconds
+        // Initialize WebSocket
+        setupWebSocket();
     </script>
 </body>
 </html>
