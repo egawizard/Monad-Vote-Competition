@@ -616,53 +616,54 @@
                 return;
             }
             
-            let html = '<div class="bracket-container">';
+            // For 8 participants: Round 0 = Quarter Finals (4 matches), Round 1 = Semi Finals (2 matches), Round 2 = Final (1 match)
+            let html = '';
             
-            // Left side bracket
-            html += '<div class="bracket-side">';
-            html += '<h3 style="color: #ffd700; margin-bottom: 30px;">Left Bracket</h3>';
-            
+            // Render rounds from first to last
             for (let round = 0; round < tournamentState.totalRounds; round++) {
-                html += `<div class="round">`;
-                html += `<div class="round-title">${getRoundName(round, tournamentState.totalRounds)}</div>`;
-                html += '<div class="matches">';
-                
                 const matchesInRound = Math.pow(2, tournamentState.totalRounds - round - 1);
-                const leftMatches = Math.floor(matchesInRound / 2);
+                const roundName = getRoundName(round, tournamentState.totalRounds);
                 
-                for (let match = 0; match < leftMatches; match++) {
-                    html += await renderMatch(round, match);
+                html += `<div class="round" style="margin: 40px 0;">`;
+                html += `<div class="round-title" style="text-align: center; font-size: 2rem; margin-bottom: 30px;">${roundName}</div>`;
+                
+                if (round < tournamentState.totalRounds - 1) {
+                    // Not final round - show matches in two columns
+                    html += '<div class="bracket-container">';
+                    html += '<div class="bracket-side">';
+                    html += '<div class="matches">';
+                    
+                    // Left side matches
+                    const leftMatches = Math.floor(matchesInRound / 2);
+                    for (let match = 0; match < leftMatches; match++) {
+                        html += await renderMatch(round, match);
+                    }
+                    
+                    html += '</div></div>';
+                    html += '<div class="bracket-side">';
+                    html += '<div class="matches">';
+                    
+                    // Right side matches
+                    const rightMatches = Math.ceil(matchesInRound / 2);
+                    const startMatch = leftMatches;
+                    for (let match = startMatch; match < startMatch + rightMatches; match++) {
+                        html += await renderMatch(round, match);
+                    }
+                    
+                    html += '</div></div>';
+                    html += '</div>';
+                } else {
+                    // Final round - center the match
+                    html += '<div style="display: flex; justify-content: center;">';
+                    html += '<div style="max-width: 500px; width: 100%;">';
+                    html += await renderMatch(round, 0);
+                    html += '</div></div>';
                 }
                 
-                html += '</div></div>';
+                html += '</div>';
             }
             
-            html += '</div>';
-            
-            // Right side bracket
-            html += '<div class="bracket-side">';
-            html += '<h3 style="color: #ffd700; margin-bottom: 30px;">Right Bracket</h3>';
-            
-            for (let round = 0; round < tournamentState.totalRounds; round++) {
-                html += `<div class="round">`;
-                html += `<div class="round-title">${getRoundName(round, tournamentState.totalRounds)}</div>`;
-                html += '<div class="matches">';
-                
-                const matchesInRound = Math.pow(2, tournamentState.totalRounds - round - 1);
-                const rightMatches = Math.ceil(matchesInRound / 2);
-                const startMatch = Math.floor(matchesInRound / 2);
-                
-                for (let match = startMatch; match < startMatch + rightMatches; match++) {
-                    html += await renderMatch(round, match);
-                }
-                
-                html += '</div></div>';
-            }
-            
-            html += '</div>';
-            html += '</div>';
-            
-            // Final/Championship
+            // Championship display
             if (tournamentState.totalRounds > 0) {
                 const finalRound = tournamentState.totalRounds - 1;
                 try {
@@ -780,9 +781,21 @@
         }
 
         function getRoundName(round, totalRounds) {
+            // For 8 participants: 3 rounds total
+            // Round 0 = Quarter Finals (4 matches)
+            // Round 1 = Semi Finals (2 matches) 
+            // Round 2 = Final (1 match)
+            
+            if (totalRounds === 3) {
+                if (round === 0) return 'Quarter Finals';
+                if (round === 1) return 'Semi Finals';
+                if (round === 2) return 'Final';
+            }
+            
+            // Generic fallback
             if (round === totalRounds - 1) return 'Final';
-            if (round === totalRounds - 2) return 'Semi Final';
-            if (round === totalRounds - 3) return 'Quarter Final';
+            if (round === totalRounds - 2) return 'Semi Finals';
+            if (round === totalRounds - 3) return 'Quarter Finals';
             return `Round ${round + 1}`;
         }
 
