@@ -390,6 +390,23 @@
             <p><strong>Current Round:</strong> <span id="currentRound">-</span></p>
             <p><strong>Total Rounds:</strong> <span id="totalRounds">-</span></p>
         </div>
+        <div style="margin-top: 1rem;">
+            <h3>Round 1 Matchups:</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 10px; text-align: center;">
+                    <strong>Match 1:</strong><br>LUMITERRA vs KURU EXCHANGE
+                </div>
+                <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 10px; text-align: center;">
+                    <strong>Match 2:</strong><br>KIZZY MOBILE vs CRYSTAL
+                </div>
+                <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 10px; text-align: center;">
+                    <strong>Match 3:</strong><br>CULT vs aPriori
+                </div>
+                <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 10px; text-align: center;">
+                    <strong>Match 4:</strong><br>Magma vs O.LAB
+                </div>
+            </div>
+        </div>
     </div>
 
     <div id="participantsSection" class="tournament-info">
@@ -405,14 +422,14 @@
 
     <div class="footer">
         <p>Created by <a href="https://x.com/ega_2ez4crypto" target="_blank">@ega_2ez4crypto</a></p>
-        <p>Powered by Monad Testnet</p>
+        <p>Powered by Monad Testnet | Contract: 0xef14...E5F7</p>
     </div>
 
     <div id="notification" class="notification"></div>
 
     <script>
         // Contract configuration
-        const CONTRACT_ADDRESS = '0xa10FC3954BC82F93dD6c19EBAB78289c912EA8d1';
+        const CONTRACT_ADDRESS = '0xef14220Aa627014e0ad99c4f8be54723b901E5F7';
         const TREASURY_ADDRESS = '0x6c2AA81b02a940c04A570aFFe7a413ca54C625cf';
         const CHAIN_ID = 10143;
         const RPC_URL = 'https://testnet-rpc.monad.xyz';
@@ -875,16 +892,24 @@
             }
         ];
 
-        // Participants list
+        // Participants list with predetermined bracket matchups
         const PARTICIPANTS = [
-            "LUMITERRA",
-            "KURU EXCHANGE", 
-            "KIZZY MOBILE",
-            "CRYSTAL",
-            "CULT",
-            "aPriori",
-            "Magma",
-            "O.LAB"
+            "LUMITERRA",      // ID: 0
+            "KURU EXCHANGE",  // ID: 1
+            "KIZZY MOBILE",   // ID: 2
+            "CRYSTAL",        // ID: 3
+            "CULT",           // ID: 4
+            "aPriori",        // ID: 5
+            "Magma",          // ID: 6
+            "O.LAB"           // ID: 7
+        ];
+
+        // Predetermined bracket matchups for Round 1
+        const ROUND_1_MATCHUPS = [
+            { match: 0, p1: 0, p2: 1, desc: "LUMITERRA vs KURU EXCHANGE" },
+            { match: 1, p1: 2, p2: 3, desc: "KIZZY MOBILE vs CRYSTAL" },
+            { match: 2, p1: 4, p2: 5, desc: "CULT vs aPriori" },
+            { match: 3, p1: 6, p2: 7, desc: "Magma vs O.LAB" }
         ];
 
         // Global variables
@@ -1086,9 +1111,18 @@
                     bracket.appendChild(roundDiv);
                 }
                 
+                // Add bracket lines/connections (visual enhancement)
+                addBracketConnections(totalRounds);
+                
             } catch (error) {
                 console.error('Error loading bracket:', error);
             }
+        }
+
+        // Add visual connections between bracket rounds
+        function addBracketConnections(totalRounds) {
+            // This function could add SVG lines connecting matches
+            // For now, we'll rely on CSS spacing and visual alignment
         }
 
         // Create match div
@@ -1106,8 +1140,20 @@
                 const isFinished = matchData.finished;
                 const winner = matchData.winnerId;
                 
+                // Add match description for Round 1
+                let matchDescription = '';
+                if (roundNum === 0) {
+                    const matchupInfo = ROUND_1_MATCHUPS.find(m => m.match === matchNum);
+                    if (matchupInfo) {
+                        matchDescription = `<div style="text-align: center; padding: 0.5rem; font-size: 0.9rem; color: #4ecdc4; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 1rem;">
+                            <strong>${matchupInfo.desc}</strong>
+                        </div>`;
+                    }
+                }
+                
                 matchDiv.innerHTML = `
                     <div class="status-indicator ${isActive && !isFinished ? '' : 'inactive'}"></div>
+                    ${matchDescription}
                     
                     <div class="participant ${winner.toString() === matchData.participant1Id.toString() ? 'winner' : ''}" 
                          onclick="${isActive && !isFinished && userAccount ? `vote(${roundNum}, ${matchNum}, ${matchData.participant1Id})` : ''}">
@@ -1129,11 +1175,13 @@
                     
                     <div class="match-info">
                         ${isFinished ? 
-                            `<p><strong>Winner:</strong> ${winner.toString() === matchData.participant1Id.toString() ? participant1.name : participant2.name}</p>` :
+                            `<p><strong>Winner:</strong> ${winner.toString() === matchData.participant1Id.toString() ? participant1.name : participant2.name}</p>
+                             <p style="color: #4caf50; font-size: 0.9rem;">✅ Match Completed</p>` :
                             isActive ? 
                                 `<div class="timer" id="timer-${roundNum}-${matchNum}">Loading...</div>
-                                 <p>Vote Cost: ${VOTE_COST} MON</p>` :
-                                '<p>Match not started</p>'
+                                 <p>Vote Cost: ${VOTE_COST} MON</p>
+                                 <p style="color: #ff6b6b; font-size: 0.9rem;">🔴 LIVE</p>` :
+                                '<p style="color: #888;">⏳ Waiting to start</p>'
                         }
                     </div>
                 `;
@@ -1145,17 +1193,35 @@
                 
             } catch (error) {
                 console.error(`Error loading match ${roundNum}-${matchNum}:`, error);
+                
+                // For Round 1, show predetermined matchups even if contract data isn't ready
+                let matchDescription = '';
+                let participant1Name = 'TBD';
+                let participant2Name = 'TBD';
+                
+                if (roundNum === 0 && matchNum < ROUND_1_MATCHUPS.length) {
+                    const matchupInfo = ROUND_1_MATCHUPS[matchNum];
+                    matchDescription = `<div style="text-align: center; padding: 0.5rem; font-size: 0.9rem; color: #4ecdc4; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 1rem;">
+                        <strong>${matchupInfo.desc}</strong>
+                    </div>`;
+                    participant1Name = PARTICIPANTS[matchupInfo.p1];
+                    participant2Name = PARTICIPANTS[matchupInfo.p2];
+                }
+                
                 matchDiv.innerHTML = `
+                    <div class="status-indicator inactive"></div>
+                    ${matchDescription}
+                    
                     <div class="participant">
-                        <span class="participant-name">TBD</span>
+                        <span class="participant-name">${participant1Name}</span>
                         <span class="vote-count">0</span>
                     </div>
                     <div class="participant">
-                        <span class="participant-name">TBD</span>
+                        <span class="participant-name">${participant2Name}</span>
                         <span class="vote-count">0</span>
                     </div>
                     <div class="match-info">
-                        <p>Match not ready</p>
+                        <p style="color: #888;">⏳ Match not ready</p>
                     </div>
                 `;
             }
