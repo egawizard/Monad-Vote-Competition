@@ -1,125 +1,837 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Monad Tournament Bracket</title>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tournament Voting - Monad Testnet</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/4.2.2/web3.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px 0;
+        }
+
+        .title {
+            font-size: 3rem;
+            font-weight: bold;
+            background: linear-gradient(45deg, #ffd700, #ffed4e, #ffd700);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+            text-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #cccccc;
+            margin-bottom: 20px;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 15px 25px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 215, 0, 0.3);
+        }
+
+        .wallet-info, .tournament-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .connect-btn {
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            color: #000;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .connect-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
+        }
+
+        .connect-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .bracket-container {
+            display: flex;
+            justify-content: center;
+            gap: 80px;
+            margin: 40px 0;
+            flex-wrap: wrap;
+        }
+
+        .bracket-side {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 400px;
+        }
+
+        .round {
+            margin: 20px 0;
+        }
+
+        .round-title {
+            text-align: center;
+            color: #ffd700;
+            font-size: 1.4rem;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .matches {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .match {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .match:hover {
+            border-color: #ffd700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+        }
+
+        .match.active {
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.1);
+        }
+
+        .match.finished {
+            border-color: #888;
+            opacity: 0.7;
+        }
+
+        .match-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .match-number {
+            font-size: 0.9rem;
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        .match-timer {
+            font-size: 0.9rem;
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+
+        .participant {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            margin: 8px 0;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+        }
+
+        .participant:hover {
+            background: rgba(255, 215, 0, 0.1);
+            border-color: #ffd700;
+        }
+
+        .participant.winner {
+            background: rgba(0, 255, 136, 0.2);
+            border-color: #00ff88;
+        }
+
+        .participant-name {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .participant-votes {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .votes-count {
+            font-size: 1rem;
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        .vote-btn {
+            background: linear-gradient(45deg, #00ff88, #00cc6a);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .vote-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 3px 10px rgba(0, 255, 136, 0.3);
+        }
+
+        .vote-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .final-match {
+            text-align: center;
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 215, 0, 0.05));
+            border: 3px solid #ffd700;
+            border-radius: 20px;
+            padding: 30px;
+            margin: 40px auto;
+            max-width: 500px;
+        }
+
+        .champion {
+            font-size: 2rem;
+            color: #ffd700;
+            font-weight: bold;
+            margin: 20px 0;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 215, 0, 0.3);
+            border-radius: 50%;
+            border-top-color: #ffd700;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 10px;
+            color: white;
+            font-weight: bold;
+            z-index: 1000;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+        }
+
+        .notification.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            background: linear-gradient(45deg, #00ff88, #00cc6a);
+        }
+
+        .notification.error {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a5a);
+        }
+
+        .credit {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            color: #888;
+            font-size: 0.8rem;
+        }
+
+        .credit a {
+            color: #ffd700;
+            text-decoration: none;
+        }
+
+        .credit a:hover {
+            color: #fff;
+        }
+
+        @media (max-width: 768px) {
+            .bracket-container {
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .bracket-side {
+                min-width: 300px;
+            }
+
+            .title {
+                font-size: 2rem;
+            }
+        }
+    </style>
 </head>
-<body class="bg-black text-white min-h-screen flex flex-col items-center justify-start p-4">
-  <h1 class="text-3xl font-bold mb-4">🏆 Monad Tournament Bracket</h1>
-  <div id="app" class="w-full max-w-6xl"></div>
-  <footer class="mt-8 text-sm text-gray-400">
-    Created by <a href="https://x.com/ega_2ez4crypto" class="underline">@ega_2ez4crypto</a>
-  </footer>
-
-  <script>
-    const CONTRACT = "0xa10FC3954BC82F93dD6c19EBAB78289c912EA8d1";
-    const TREASURY = "0x6c2AA81b02a940c04A570aFFe7a413ca54C625cf";
-
-    let provider, signer, contract, account;
-    let owner;
-
-    const abi = [
-      {"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
-      {"inputs":[{"internalType":"uint256","name":"roundNum","type":"uint256"},{"internalType":"uint256","name":"duration","type":"uint256"}],"name":"startTournament","outputs":[],"stateMutability":"nonpayable","type":"function"},
-      {"inputs":[{"internalType":"uint256","name":"roundNum","type":"uint256"},{"internalType":"uint256","name":"matchNum","type":"uint256"}],"name":"finishMatch","outputs":[],"stateMutability":"nonpayable","type":"function"},
-      {"inputs":[{"internalType":"uint256","name":"roundNum","type":"uint256"}],"name":"forceFinishExpiredMatches","outputs":[],"stateMutability":"nonpayable","type":"function"}
-    ];
-
-    const participants = ["LUMITERRA","KURU EXCHANGE","KIZZY MOBILE","CRYSTAL","CULT","aPriori","Magma","O.LAB"];
-
-    async function connectWallet() {
-      if (!window.ethereum) return alert("Please install MetaMask");
-      provider = new ethers.providers.Web3Provider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
-      signer = provider.getSigner();
-      account = await signer.getAddress();
-      contract = new ethers.Contract(CONTRACT, abi, signer);
-      owner = await contract.owner();
-      render();
-    }
-
-    async function startTournamentUI() {
-      const round = 1;
-      const duration = 86400; // 24 hours
-      try {
-        const gasEstimate = await contract.estimateGas.startTournament(round, duration);
-        const tx = await contract.startTournament(round, duration, { gasLimit: gasEstimate.mul(2) });
-        await tx.wait();
-        alert("Round 1 started: all 4 matches running concurrently for 24h!");
-      } catch (e) { alert("Error: " + e.message); }
-    }
-
-    async function finishMatchUI() {
-      const round = prompt("Round number:");
-      const match = prompt("Match number:");
-      try {
-        const gasEstimate = await contract.estimateGas.finishMatch(round, match);
-        const tx = await contract.finishMatch(round, match, { gasLimit: gasEstimate.mul(2) });
-        await tx.wait();
-        alert("Match finished!");
-      } catch (e) { alert("Error: " + e.message); }
-    }
-
-    async function forceFinishExpiredMatchesUI() {
-      const round = prompt("Round number:");
-      try {
-        const gasEstimate = await contract.estimateGas.forceFinishExpiredMatches(round);
-        const tx = await contract.forceFinishExpiredMatches(round, { gasLimit: gasEstimate.mul(2) });
-        await tx.wait();
-        alert("Expired matches finished!");
-      } catch (e) { alert("Error: " + e.message); }
-    }
-
-    function renderBracketUI() {
-      return `
-        <button onclick="connectWallet()" class='bg-blue-600 px-4 py-2 rounded mb-4'>Connect Wallet</button>
-        <div class='grid grid-cols-4 gap-4 w-full'>
-          <div class='flex flex-col justify-around'>
-            ${participants.slice(0,4).map(p => `<div class='p-2 border rounded'>${p} <button class='ml-2 bg-blue-600 px-2 py-1 rounded'>Vote</button></div>`).join('')}
-          </div>
-          <div class='flex flex-col justify-around'><div class='p-2 border rounded'>Winner QF1</div><div class='p-2 border rounded'>Winner QF2</div></div>
-          <div class='flex flex-col justify-around'><div class='p-2 border rounded'>Winner SF1</div></div>
-          <div class='flex flex-col justify-around'><div class='p-2 border rounded'>🏆 Champion</div></div>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title">🏆 TOURNAMENT VOTING 🏆</h1>
+            <p class="subtitle">Blockchain Tournament Bracket System on Monad Testnet</p>
         </div>
-        <div class='grid grid-cols-4 gap-4 w-full mt-8'>
-          <div class='flex flex-col justify-around'>
-            ${participants.slice(4).map(p => `<div class='p-2 border rounded'>${p} <button class='ml-2 bg-blue-600 px-2 py-1 rounded'>Vote</button></div>`).join('')}
-          </div>
-          <div class='flex flex-col justify-around'><div class='p-2 border rounded'>Winner QF3</div><div class='p-2 border rounded'>Winner QF4</div></div>
-          <div class='flex flex-col justify-around'><div class='p-2 border rounded'>Winner SF2</div></div>
+
+        <div class="status-bar">
+            <div class="wallet-info">
+                <span id="walletStatus">Not Connected</span>
+                <button class="connect-btn" id="connectBtn" onclick="connectWallet()">Connect Wallet</button>
+            </div>
+            <div class="tournament-info">
+                <span id="tournamentStatus">Loading...</span>
+                <span id="currentRound">Round: -</span>
+            </div>
         </div>
-      `;
-    }
 
-    function render() {
-      const path = window.location.pathname;
-      const app = document.getElementById("app");
-      app.innerHTML = "";
+        <div id="tournamentContainer">
+            <div class="loading" style="margin: 50px auto; display: block;"></div>
+        </div>
+    </div>
 
-      if (path === "/admin") {
-        if (!account) {
-          app.innerHTML = `<button onclick="connectWallet()" class="bg-blue-600 px-4 py-2 rounded">Connect Wallet</button>`;
-          return;
+    <div class="credit">
+        Created by <a href="https://x.com/ega_2ez4crypto" target="_blank">@ega_2ez4crypto</a>
+    </div>
+
+    <div id="notification" class="notification"></div>
+
+    <script>
+        // Contract Configuration
+        const CONTRACT_ADDRESS = '0xa10FC3954BC82F93dD6c19EBAB78289c912EA8d1';
+        const TREASURY_ADDRESS = '0x6c2AA81b02a940c04A570aFFe7a413ca54C625cf';
+        const CHAIN_ID = 10143;
+        const RPC_URL = 'https://testnet-rpc.monad.xyz';
+        const VOTE_COST = '100000000000000000'; // 0.1 MON in wei
+
+        const PARTICIPANTS = [
+            'LUMITERRA', 'KURU EXCHANGE', 'KIZZY MOBILE', 'CRYSTAL CULT',
+            'aPriori', 'Magma', 'O.LAB', 'Random Participant'
+        ];
+
+        const CONTRACT_ABI = [
+            {
+                "inputs": [
+                    {"internalType": "uint256", "name": "roundNum", "type": "uint256"},
+                    {"internalType": "uint256", "name": "matchNum", "type": "uint256"}
+                ],
+                "name": "finishMatch",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "forceFinishExpiredMatches",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "stateMutability": "nonpayable",
+                "type": "constructor"
+            },
+            {
+                "anonymous": false,
+                "inputs": [
+                    {"indexed": false, "internalType": "uint256", "name": "round", "type": "uint256"},
+                    {"indexed": false, "internalType": "uint256", "name": "matchIndex", "type": "uint256"},
+                    {"indexed": false, "internalType": "uint256", "name": "winner", "type": "uint256"}
+                ],
+                "name": "MatchFinished",
+                "type": "event"
+            },
+            {
+                "anonymous": false,
+                "inputs": [
+                    {"indexed": false, "internalType": "uint256", "name": "round", "type": "uint256"}
+                ],
+                "name": "RoundFinished",
+                "type": "event"
+            },
+            {
+                "inputs": [],
+                "name": "startTournament",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "anonymous": false,
+                "inputs": [
+                    {"indexed": false, "internalType": "uint256", "name": "winner", "type": "uint256"}
+                ],
+                "name": "TournamentFinished",
+                "type": "event"
+            },
+            {
+                "inputs": [
+                    {"internalType": "uint256", "name": "roundNum", "type": "uint256"},
+                    {"internalType": "uint256", "name": "matchNum", "type": "uint256"},
+                    {"internalType": "uint256", "name": "participantId", "type": "uint256"}
+                ],
+                "name": "vote",
+                "outputs": [],
+                "stateMutability": "payable",
+                "type": "function"
+            },
+            {
+                "anonymous": false,
+                "inputs": [
+                    {"indexed": true, "internalType": "address", "name": "voter", "type": "address"},
+                    {"indexed": false, "internalType": "uint256", "name": "round", "type": "uint256"},
+                    {"indexed": false, "internalType": "uint256", "name": "matchIndex", "type": "uint256"},
+                    {"indexed": false, "internalType": "uint256", "name": "participant", "type": "uint256"},
+                    {"indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256"}
+                ],
+                "name": "VoteCast",
+                "type": "event"
+            },
+            {
+                "inputs": [],
+                "name": "currentRound",
+                "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "getCurrentMatches",
+                "outputs": [{"internalType": "uint256[]", "name": "", "type": "uint256[]"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [
+                    {"internalType": "uint256", "name": "roundNum", "type": "uint256"},
+                    {"internalType": "uint256", "name": "matchNum", "type": "uint256"}
+                ],
+                "name": "getMatch",
+                "outputs": [
+                    {"internalType": "uint256", "name": "participant1Id", "type": "uint256"},
+                    {"internalType": "uint256", "name": "participant2Id", "type": "uint256"},
+                    {"internalType": "uint256", "name": "votes1", "type": "uint256"},
+                    {"internalType": "uint256", "name": "votes2", "type": "uint256"},
+                    {"internalType": "uint256", "name": "winnerId", "type": "uint256"},
+                    {"internalType": "uint256", "name": "startTime", "type": "uint256"},
+                    {"internalType": "uint256", "name": "endTime", "type": "uint256"},
+                    {"internalType": "bool", "name": "finished", "type": "bool"}
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"internalType": "uint256", "name": "id", "type": "uint256"}],
+                "name": "getParticipant",
+                "outputs": [
+                    {"internalType": "string", "name": "name", "type": "string"},
+                    {"internalType": "bool", "name": "active", "type": "bool"},
+                    {"internalType": "uint256", "name": "totalVotes", "type": "uint256"}
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "getTournamentState",
+                "outputs": [
+                    {"internalType": "enum TournamentVoting.TournamentState", "name": "tournamentState", "type": "uint8"},
+                    {"internalType": "uint256", "name": "round", "type": "uint256"},
+                    {"internalType": "uint256", "name": "totalRounds", "type": "uint256"}
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            }
+        ];
+
+        let web3;
+        let contract;
+        let userAccount;
+        let tournamentState = {};
+
+        // Initialize the application
+        window.addEventListener('load', async () => {
+            if (typeof window.ethereum !== 'undefined') {
+                web3 = new Web3(window.ethereum);
+                contract = new web3.eth.Contract(CONTRACT_ABI, CONTRACT_ADDRESS);
+                
+                // Check if already connected
+                const accounts = await web3.eth.getAccounts();
+                if (accounts.length > 0) {
+                    userAccount = accounts[0];
+                    updateWalletStatus();
+                }
+                
+                loadTournamentData();
+                setupEventListeners();
+                
+                // Refresh data every 10 seconds
+                setInterval(loadTournamentData, 10000);
+            } else {
+                showNotification('MetaMask is required to use this application', 'error');
+            }
+        });
+
+        async function connectWallet() {
+            try {
+                const connectBtn = document.getElementById('connectBtn');
+                connectBtn.disabled = true;
+                connectBtn.innerHTML = '<div class="loading"></div>';
+                
+                const accounts = await window.ethereum.request({
+                    method: 'eth_requestAccounts'
+                });
+                
+                // Switch to Monad testnet
+                try {
+                    await window.ethereum.request({
+                        method: 'wallet_switchEthereumChain',
+                        params: [{ chainId: web3.utils.toHex(CHAIN_ID) }],
+                    });
+                } catch (switchError) {
+                    if (switchError.code === 4902) {
+                        await window.ethereum.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [{
+                                chainId: web3.utils.toHex(CHAIN_ID),
+                                chainName: 'Monad Testnet',
+                                nativeCurrency: { name: 'MON', symbol: 'MON', decimals: 18 },
+                                rpcUrls: [RPC_URL],
+                            }],
+                        });
+                    }
+                }
+                
+                userAccount = accounts[0];
+                updateWalletStatus();
+                showNotification('Wallet connected successfully!', 'success');
+                
+            } catch (error) {
+                console.error('Failed to connect wallet:', error);
+                showNotification('Failed to connect wallet', 'error');
+            } finally {
+                const connectBtn = document.getElementById('connectBtn');
+                connectBtn.disabled = false;
+                connectBtn.textContent = 'Connected';
+            }
         }
-        if (account.toLowerCase() !== owner.toLowerCase()) {
-          app.innerHTML = `<p class='text-red-500'>Unauthorized: only owner can access admin panel.</p>`;
-          return;
-        }
-        app.innerHTML = `
-          <h2 class="text-2xl font-bold mb-4">⚙️ Admin Panel</h2>
-          <button onclick="startTournamentUI()" class="bg-green-600 px-4 py-2 rounded m-2">Start Round 1 (All 4 Matches, 24h)</button>
-          <button onclick="finishMatchUI()" class="bg-yellow-600 px-4 py-2 rounded m-2">Finish Match</button>
-          <button onclick="forceFinishExpiredMatchesUI()" class="bg-red-600 px-4 py-2 rounded m-2">Force Finish Expired Matches</button>
-        `;
-      } else {
-        app.innerHTML = renderBracketUI() + `<br><a href='/admin' class='underline text-blue-400'>Go to Admin</a>`;
-      }
-    }
 
-    render();
-  </script>
+        function updateWalletStatus() {
+            const walletStatus = document.getElementById('walletStatus');
+            const connectBtn = document.getElementById('connectBtn');
+            
+            if (userAccount) {
+                walletStatus.textContent = `${userAccount.substring(0, 6)}...${userAccount.substring(38)}`;
+                connectBtn.textContent = 'Connected';
+                connectBtn.disabled = true;
+            }
+        }
+
+        async function loadTournamentData() {
+            try {
+                // Get tournament state
+                const state = await contract.methods.getTournamentState().call();
+                tournamentState = {
+                    state: parseInt(state.tournamentState),
+                    round: parseInt(state.round),
+                    totalRounds: parseInt(state.totalRounds)
+                };
+                
+                document.getElementById('currentRound').textContent = `Round: ${tournamentState.round}`;
+                document.getElementById('tournamentStatus').textContent = 
+                    tournamentState.state === 0 ? 'Not Started' :
+                    tournamentState.state === 1 ? 'Active' : 'Finished';
+                
+                await renderTournament();
+                
+            } catch (error) {
+                console.error('Error loading tournament data:', error);
+            }
+        }
+
+        async function renderTournament() {
+            const container = document.getElementById('tournamentContainer');
+            
+            if (tournamentState.state === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 50px;">
+                        <h2>Tournament Not Started</h2>
+                        <p>Waiting for tournament to begin...</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '<div class="bracket-container">';
+            
+            // Left side bracket
+            html += '<div class="bracket-side">';
+            html += '<h3 style="color: #ffd700; margin-bottom: 30px;">Left Bracket</h3>';
+            
+            for (let round = 0; round < tournamentState.totalRounds; round++) {
+                html += `<div class="round">`;
+                html += `<div class="round-title">${getRoundName(round, tournamentState.totalRounds)}</div>`;
+                html += '<div class="matches">';
+                
+                const matchesInRound = Math.pow(2, tournamentState.totalRounds - round - 1);
+                const leftMatches = Math.floor(matchesInRound / 2);
+                
+                for (let match = 0; match < leftMatches; match++) {
+                    html += await renderMatch(round, match);
+                }
+                
+                html += '</div></div>';
+            }
+            
+            html += '</div>';
+            
+            // Right side bracket
+            html += '<div class="bracket-side">';
+            html += '<h3 style="color: #ffd700; margin-bottom: 30px;">Right Bracket</h3>';
+            
+            for (let round = 0; round < tournamentState.totalRounds; round++) {
+                html += `<div class="round">`;
+                html += `<div class="round-title">${getRoundName(round, tournamentState.totalRounds)}</div>`;
+                html += '<div class="matches">';
+                
+                const matchesInRound = Math.pow(2, tournamentState.totalRounds - round - 1);
+                const rightMatches = Math.ceil(matchesInRound / 2);
+                const startMatch = Math.floor(matchesInRound / 2);
+                
+                for (let match = startMatch; match < startMatch + rightMatches; match++) {
+                    html += await renderMatch(round, match);
+                }
+                
+                html += '</div></div>';
+            }
+            
+            html += '</div>';
+            html += '</div>';
+            
+            // Final/Championship
+            if (tournamentState.totalRounds > 0) {
+                const finalRound = tournamentState.totalRounds - 1;
+                try {
+                    const matchData = await contract.methods.getMatch(finalRound, 0).call();
+                    if (matchData.finished && matchData.winnerId > 0) {
+                        const participantName = await getParticipantName(matchData.winnerId);
+                        html += `
+                            <div class="final-match">
+                                <h2 style="color: #ffd700;">🏆 CHAMPION 🏆</h2>
+                                <div class="champion">${participantName}</div>
+                                <p>Congratulations to our tournament winner!</p>
+                            </div>
+                        `;
+                    }
+                } catch (error) {
+                    console.log('Final match not yet available');
+                }
+            }
+            
+            container.innerHTML = html;
+        }
+
+        async function renderMatch(roundNum, matchNum) {
+            try {
+                const matchData = await contract.methods.getMatch(roundNum, matchNum).call();
+                const isActive = roundNum === tournamentState.round && !matchData.finished;
+                const timeRemaining = isActive ? Math.max(0, parseInt(matchData.endTime) - Math.floor(Date.now() / 1000)) : 0;
+                
+                const participant1Name = await getParticipantName(matchData.participant1Id);
+                const participant2Name = await getParticipantName(matchData.participant2Id);
+                
+                let html = `
+                    <div class="match ${isActive ? 'active' : ''} ${matchData.finished ? 'finished' : ''}">
+                        <div class="match-header">
+                            <span class="match-number">Match ${matchNum + 1}</span>
+                            ${isActive && timeRemaining > 0 ? 
+                                `<span class="match-timer">${formatTime(timeRemaining)}</span>` : 
+                                matchData.finished ? '<span class="match-timer">Finished</span>' : ''
+                            }
+                        </div>
+                `;
+                
+                // Participant 1
+                html += `
+                    <div class="participant ${matchData.finished && matchData.winnerId == matchData.participant1Id ? 'winner' : ''}">
+                        <span class="participant-name">${participant1Name}</span>
+                        <div class="participant-votes">
+                            <span class="votes-count">${matchData.votes1} votes</span>
+                            ${isActive && userAccount ? 
+                                `<button class="vote-btn" onclick="vote(${roundNum}, ${matchNum}, ${matchData.participant1Id})">Vote (0.1 MON)</button>` : 
+                                ''
+                            }
+                        </div>
+                    </div>
+                `;
+                
+                // Participant 2
+                html += `
+                    <div class="participant ${matchData.finished && matchData.winnerId == matchData.participant2Id ? 'winner' : ''}">
+                        <span class="participant-name">${participant2Name}</span>
+                        <div class="participant-votes">
+                            <span class="votes-count">${matchData.votes2} votes</span>
+                            ${isActive && userAccount ? 
+                                `<button class="vote-btn" onclick="vote(${roundNum}, ${matchNum}, ${matchData.participant2Id})">Vote (0.1 MON)</button>` : 
+                                ''
+                            }
+                        </div>
+                    </div>
+                `;
+                
+                html += '</div>';
+                return html;
+                
+            } catch (error) {
+                console.error('Error rendering match:', error);
+                return `<div class="match"><p>Error loading match data</p></div>`;
+            }
+        }
+
+        async function vote(roundNum, matchNum, participantId) {
+            if (!userAccount) {
+                showNotification('Please connect your wallet first', 'error');
+                return;
+            }
+            
+            try {
+                showNotification('Processing vote...', 'success');
+                
+                const tx = await contract.methods.vote(roundNum, matchNum, participantId).send({
+                    from: userAccount,
+                    value: VOTE_COST,
+                    gas: 300000
+                });
+                
+                showNotification('Vote cast successfully!', 'success');
+                
+                // Refresh data after vote
+                setTimeout(loadTournamentData, 2000);
+                
+            } catch (error) {
+                console.error('Voting error:', error);
+                showNotification('Failed to cast vote', 'error');
+            }
+        }
+
+        async function getParticipantName(participantId) {
+            if (participantId === 0) return 'TBD';
+            
+            try {
+                const participant = await contract.methods.getParticipant(participantId).call();
+                return participant.name || PARTICIPANTS[participantId - 1] || `Participant ${participantId}`;
+            } catch (error) {
+                return PARTICIPANTS[participantId - 1] || `Participant ${participantId}`;
+            }
+        }
+
+        function getRoundName(round, totalRounds) {
+            if (round === totalRounds - 1) return 'Final';
+            if (round === totalRounds - 2) return 'Semi Final';
+            if (round === totalRounds - 3) return 'Quarter Final';
+            return `Round ${round + 1}`;
+        }
+
+        function formatTime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            
+            if (hours > 0) {
+                return `${hours}h ${minutes}m ${secs}s`;
+            } else if (minutes > 0) {
+                return `${minutes}m ${secs}s`;
+            } else {
+                return `${secs}s`;
+            }
+        }
+
+        function setupEventListeners() {
+            // Listen for contract events
+            if (contract) {
+                contract.events.VoteCast()
+                    .on('data', (event) => {
+                        loadTournamentData();
+                    });
+                
+                contract.events.MatchFinished()
+                    .on('data', (event) => {
+                        showNotification('Match finished!', 'success');
+                        loadTournamentData();
+                    });
+                
+                contract.events.RoundFinished()
+                    .on('data', (event) => {
+                        showNotification(`Round ${event.returnValues.round} finished!`, 'success');
+                        loadTournamentData();
+                    });
+            }
+        }
+
+        function showNotification(message, type) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.classList.add('show');
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+    </script>
 </body>
 </html>
