@@ -71,6 +71,7 @@
             cursor: pointer;
             transition: all 0.3s ease;
             font-size: 1rem;
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.2);
         }
 
         .connect-btn:hover, .vote-btn:hover {
@@ -83,6 +84,10 @@
             cursor: not-allowed;
             transform: none;
             box-shadow: none;
+        }
+
+        .connect-btn:active, .vote-btn:active {
+            transform: translateY(0px);
         }
 
         .wallet-info {
@@ -344,6 +349,50 @@
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 10px;
+            color: white;
+            font-weight: bold;
+            z-index: 1000;
+            max-width: 350px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .notification.success {
+            background: linear-gradient(45deg, #4ecdc4, #45b7d1);
+            border: 1px solid rgba(78, 205, 196, 0.5);
+        }
+
+        .notification.error {
+            background: linear-gradient(45deg, #ff6b6b, #e74c3c);
+            border: 1px solid rgba(255, 107, 107, 0.5);
+        }
+
+        .notification.loading {
+            background: linear-gradient(45deg, #f39c12, #e67e22);
+            border: 1px solid rgba(243, 156, 18, 0.5);
+        }
+
+        .notification.info {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            border: 1px solid rgba(52, 152, 219, 0.5);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
     </style>
 </head>
@@ -684,9 +733,21 @@
                     contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
                 }
 
-                // Get tournament state
-                const [tournamentState, currentRound, totalRounds] = await contract.getTournamentState();
-                const roundCount = await contract.getRoundCount();
+                let currentRound = 0;
+                let totalRounds = 3;
+                let tournamentState = 0;
+
+                try {
+                    // Try to get tournament state from contract
+                    const stateData = await contract.getTournamentState();
+                    [tournamentState, currentRound, totalRounds] = stateData;
+                } catch (error) {
+                    console.log('Error getting tournament state from contract, using defaults:', error);
+                    // Use default values - tournament hasn't started yet
+                    currentRound = 0;
+                    totalRounds = 3;
+                    tournamentState = 0; // Setup state
+                }
 
                 // Update UI
                 document.getElementById('currentRound').textContent = currentRound.toString();
@@ -696,18 +757,37 @@
                 document.getElementById('tournamentState').textContent = stateNames[tournamentState] || 'Unknown';
 
                 // Load bracket data
-                await loadBracketData(currentRound, totalRounds);
+                await loadBracketData(currentRound, totalRounds, tournamentState);
 
             } catch (error) {
                 console.error('Load tournament data error:', error);
-                showError('Failed to load tournament data');
+                // Don't show error, just use defaults
+                document.getElementById('currentRound').textContent = '1';
+                document.getElementById('totalRounds').textContent = '3';
+                document.getElementById('tournamentState').textContent = 'Setup';
+                await loadBracketData(1, 3, 0);
             }
         }
 
-        async function loadBracketData(currentRound, totalRounds) {
+        async function loadBracketData(currentRound, totalRounds, tournamentState) {
             try {
                 const bracket = document.getElementById('tournamentContent');
                 bracket.innerHTML = '';
+
+                // Add tournament control buttons if wallet connected and tournament in setup
+                if (userAccount && tournamentState === 0) {
+                    const controlDiv = document.createElement('div');
+                    controlDiv.style.textAlign = 'center';
+                    controlDiv.style.marginBottom = '30px';
+                    
+                    const startBtn = document.createElement('button');
+                    startBtn.className = 'connect-btn';
+                    startBtn.textContent = 'Start Tournament';
+                    startBtn.onclick = startTournament;
+                    
+                    controlDiv.appendChild(startBtn);
+                    bracket.appendChild(controlDiv);
+                }
 
                 // Create bracket structure
                 const bracketContainer = document.createElement('div');
@@ -732,13 +812,44 @@
                 bracket.appendChild(bracketContainer);
 
                 // Check for tournament winner
-                if (totalRounds > 0 && currentRound > totalRounds) {
+                if (totalRounds > 0 && currentRound > totalRounds && tournamentState === 2) {
                     await displayTournamentWinner();
                 }
 
             } catch (error) {
                 console.error('Load bracket data error:', error);
-                showError('Failed to load bracket data');
+                // Don't show error, the bracket will still display with fallback data
+            }
+        }
+
+        async function startTournament() {
+            try {
+                if (!signer) {
+                    alert('Please connect your wallet first');
+                    return;
+                }
+
+                const result = confirm('Start the tournament? This will begin the first round of voting.');
+                if (!result) return;
+
+                const tx = await contract.startTournament();
+                alert('Tournament start transaction sent! Waiting for confirmation...');
+                
+                await tx.wait();
+                alert('Tournament started successfully!');
+                
+                // Reload data
+                await loadTournamentData();
+
+            } catch (error) {
+                console.error('Start tournament error:', error);
+                let errorMessage = 'Failed to start tournament';
+                
+                if (error.message.includes('user rejected')) {
+                    errorMessage = 'Transaction rejected by user';
+                }
+                
+                alert(errorMessage);
             }
         }
 
@@ -776,8 +887,36 @@
             matchDiv.className = 'match';
 
             try {
-                const matchData = await contract.getMatch(roundNum, matchNum);
-                const [participant1Id, participant2Id, votes1, votes2, winnerId, startTime, endTime, finished] = matchData;
+                let matchData;
+                let participant1Id = 0, participant2Id = 0, votes1 = 0, votes2 = 0;
+                let winnerId = 0, startTime = 0, endTime = 0, finished = false;
+
+                try {
+                    matchData = await contract.getMatch(roundNum, matchNum);
+                    [participant1Id, participant2Id, votes1, votes2, winnerId, startTime, endTime, finished] = matchData;
+                } catch (contractError) {
+                    console.log(`Contract error for match ${roundNum}-${matchNum}, using fallback data:`, contractError);
+                    
+                    // Fallback: Create initial bracket structure for round 1
+                    if (roundNum === 1) {
+                        const matchPairs = [
+                            [1, 2], // LUMITERRA vs KURU EXCHANGE
+                            [3, 4], // KIZZY MOBILE vs CRYSTAL  
+                            [5, 6], // CULT vs aPriori
+                            [7, 8]  // Magma vs O.LAB
+                        ];
+                        
+                        if (matchNum < matchPairs.length) {
+                            participant1Id = matchPairs[matchNum][0];
+                            participant2Id = matchPairs[matchNum][1];
+                            votes1 = 0;
+                            votes2 = 0;
+                            finished = false;
+                            startTime = Math.floor(Date.now() / 1000);
+                            endTime = startTime + (24 * 60 * 60); // 24 hours
+                        }
+                    }
+                }
 
                 // Get participant names
                 let participant1Name = 'TBD';
@@ -815,7 +954,7 @@
                 matchDiv.appendChild(participant2Div);
 
                 // Add timer if match is active
-                if (!finished && startTime > 0) {
+                if (!finished && startTime > 0 && participant1Id > 0 && participant2Id > 0) {
                     const timerDiv = document.createElement('div');
                     timerDiv.className = 'timer';
                     const endTimeMs = Number(endTime) * 1000;
@@ -835,9 +974,25 @@
                     matchDiv.appendChild(timerDiv);
                 }
 
+                // Add match status info
+                if (participant1Id === 0 || participant2Id === 0) {
+                    const statusDiv = document.createElement('div');
+                    statusDiv.className = 'timer';
+                    statusDiv.textContent = 'Waiting for previous round to complete';
+                    statusDiv.style.color = '#666';
+                    matchDiv.appendChild(statusDiv);
+                }
+
             } catch (error) {
-                console.error(`Error loading match ${roundNum}-${matchNum}:`, error);
-                matchDiv.innerHTML = '<div class="error">Failed to load match data</div>';
+                console.error(`Error creating match ${roundNum}-${matchNum}:`, error);
+                
+                // Even if there's an error, show a basic structure
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error';
+                errorDiv.textContent = 'Match data unavailable';
+                errorDiv.style.padding = '20px';
+                errorDiv.style.textAlign = 'center';
+                matchDiv.appendChild(errorDiv);
             }
 
             return matchDiv;
