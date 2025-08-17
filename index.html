@@ -591,7 +591,12 @@
                     totalRounds: parseInt(state.totalRounds)
                 };
                 
-                document.getElementById('currentRound').textContent = `Round: ${tournamentState.round}`;
+                // For 8 participants, we should have 3 total rounds (0, 1, 2)
+                if (tournamentState.totalRounds === 0) {
+                    tournamentState.totalRounds = 3; // Default for 8 participants
+                }
+                
+                document.getElementById('currentRound').textContent = `Round: ${tournamentState.round + 1}`;
                 document.getElementById('tournamentStatus').textContent = 
                     tournamentState.state === 0 ? 'Not Started' :
                     tournamentState.state === 1 ? 'Active' : 'Finished';
@@ -616,55 +621,63 @@
                 return;
             }
             
-            // For 8 participants: Round 0 = Quarter Finals (4 matches), Round 1 = Semi Finals (2 matches), Round 2 = Final (1 match)
-            let html = '';
+            // Show the current active round
+            const currentRound = tournamentState.round;
+            const matchesInCurrentRound = Math.pow(2, tournamentState.totalRounds - currentRound - 1);
+            const roundName = getRoundName(currentRound, tournamentState.totalRounds);
             
-            // Render rounds from first to last
-            for (let round = 0; round < tournamentState.totalRounds; round++) {
-                const matchesInRound = Math.pow(2, tournamentState.totalRounds - round - 1);
-                const roundName = getRoundName(round, tournamentState.totalRounds);
+            let html = `<div style="margin: 40px 0;">`;
+            html += `<div class="round-title" style="text-align: center; font-size: 2rem; margin-bottom: 30px;">${roundName}</div>`;
+            
+            if (currentRound === tournamentState.totalRounds - 1) {
+                // Final round - center the match
+                html += '<div style="display: flex; justify-content: center;">';
+                html += '<div style="max-width: 500px; width: 100%;">';
+                html += await renderMatch(currentRound, 0);
+                html += '</div></div>';
+            } else {
+                // Not final round - show matches in two columns
+                html += '<div class="bracket-container">';
+                html += '<div class="bracket-side">';
+                html += '<h3 style="color: #ffd700; margin-bottom: 30px;">Left Bracket</h3>';
+                html += '<div class="matches">';
                 
-                html += `<div class="round" style="margin: 40px 0;">`;
-                html += `<div class="round-title" style="text-align: center; font-size: 2rem; margin-bottom: 30px;">${roundName}</div>`;
-                
-                if (round < tournamentState.totalRounds - 1) {
-                    // Not final round - show matches in two columns
-                    html += '<div class="bracket-container">';
-                    html += '<div class="bracket-side">';
-                    html += '<div class="matches">';
-                    
-                    // Left side matches
-                    const leftMatches = Math.floor(matchesInRound / 2);
-                    for (let match = 0; match < leftMatches; match++) {
-                        html += await renderMatch(round, match);
-                    }
-                    
-                    html += '</div></div>';
-                    html += '<div class="bracket-side">';
-                    html += '<div class="matches">';
-                    
-                    // Right side matches
-                    const rightMatches = Math.ceil(matchesInRound / 2);
-                    const startMatch = leftMatches;
-                    for (let match = startMatch; match < startMatch + rightMatches; match++) {
-                        html += await renderMatch(round, match);
-                    }
-                    
-                    html += '</div></div>';
-                    html += '</div>';
-                } else {
-                    // Final round - center the match
-                    html += '<div style="display: flex; justify-content: center;">';
-                    html += '<div style="max-width: 500px; width: 100%;">';
-                    html += await renderMatch(round, 0);
-                    html += '</div></div>';
+                // Left side matches
+                const leftMatches = Math.floor(matchesInCurrentRound / 2);
+                for (let match = 0; match < leftMatches; match++) {
+                    html += await renderMatch(currentRound, match);
                 }
                 
+                html += '</div></div>';
+                html += '<div class="bracket-side">';
+                html += '<h3 style="color: #ffd700; margin-bottom: 30px;">Right Bracket</h3>';
+                html += '<div class="matches">';
+                
+                // Right side matches
+                const rightMatches = Math.ceil(matchesInCurrentRound / 2);
+                const startMatch = leftMatches;
+                for (let match = startMatch; match < startMatch + rightMatches; match++) {
+                    html += await renderMatch(currentRound, match);
+                }
+                
+                html += '</div></div>';
                 html += '</div>';
             }
             
+            html += '</div>';
+            
+            // Show completed rounds summary
+            if (currentRound > 0) {
+                html += `<div style="text-align: center; margin-top: 40px; padding: 20px; background: rgba(255,255,255,0.1); border-radius: 15px;">`;
+                html += `<h3 style="color: #888;">Previous Rounds Completed</h3>`;
+                for (let round = 0; round < currentRound; round++) {
+                    html += `<span style="color: #ffd700; margin: 0 10px;">${getRoundName(round, tournamentState.totalRounds)} ✓</span>`;
+                }
+                html += `</div>`;
+            }
+            
             // Championship display
-            if (tournamentState.totalRounds > 0) {
+            if (tournamentState.state === 2) { // Tournament finished
                 const finalRound = tournamentState.totalRounds - 1;
                 try {
                     const matchData = await contract.methods.getMatch(finalRound, 0).call();
@@ -679,7 +692,7 @@
                         `;
                     }
                 } catch (error) {
-                    console.log('Final match not yet available');
+                    console.log('Championship data not available');
                 }
             }
             
