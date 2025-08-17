@@ -1,1424 +1,327 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tournament Voting Bracket</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #0a0a0a, #1a1a2e, #16213e);
-            color: #ffffff;
-            min-height: 100vh;
-            overflow-x: auto;
-        }
-
-        .header {
-            text-align: center;
-            padding: 2rem 0;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .header h1 {
-            font-size: 3rem;
-            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 0.5rem;
-        }
-
-        .header p {
-            font-size: 1.2rem;
-            color: #888;
-        }
-
-        .wallet-section {
-            text-align: center;
-            padding: 2rem;
-        }
-
-        .connect-wallet {
-            background: linear-gradient(45deg, #667eea, #764ba2);
-            border: none;
-            padding: 1rem 2rem;
-            border-radius: 50px;
-            color: white;
-            font-size: 1.1rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
-        }
-
-        .connect-wallet:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 12px 40px rgba(102, 126, 234, 0.5);
-        }
-
-        .wallet-info {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 20px;
-            padding: 1.5rem;
-            margin: 1rem auto;
-            max-width: 500px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .admin-panel {
-            background: rgba(255, 0, 0, 0.1);
-            border: 1px solid rgba(255, 0, 0, 0.3);
-            border-radius: 20px;
-            padding: 2rem;
-            margin: 2rem auto;
-            max-width: 600px;
-            text-align: center;
-        }
-
-        .admin-panel h2 {
-            color: #ff6b6b;
-            margin-bottom: 1rem;
-        }
-
-        .admin-btn {
-            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
-            border: none;
-            padding: 1rem 2rem;
-            border-radius: 50px;
-            color: white;
-            font-size: 1rem;
-            cursor: pointer;
-            margin: 0.5rem;
-            transition: all 0.3s ease;
-        }
-
-        .admin-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 32px rgba(255, 107, 107, 0.4);
-        }
-
-        .tournament-info {
-            text-align: center;
-            padding: 2rem;
-            background: rgba(255, 255, 255, 0.05);
-            margin: 2rem auto;
-            max-width: 800px;
-            border-radius: 20px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .bracket-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 3rem 1rem;
-            min-height: 80vh;
-            overflow-x: auto;
-        }
-
-        .bracket {
-            display: flex;
-            gap: 4rem;
-            min-width: 1200px;
-        }
-
-        .round {
-            display: flex;
-            flex-direction: column;
-            justify-content: space-around;
-            min-height: 600px;
-        }
-
-        .round h3 {
-            text-align: center;
-            margin-bottom: 2rem;
-            font-size: 1.5rem;
-            color: #4ecdc4;
-        }
-
-        .match {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 15px;
-            padding: 1.5rem;
-            margin: 1rem 0;
-            min-width: 280px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .match::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1);
-        }
-
-        .participant {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem;
-            margin: 0.5rem 0;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .participant:hover {
-            background: rgba(255, 255, 255, 0.08);
-            transform: translateX(5px);
-        }
-
-        .participant.winner {
-            background: rgba(76, 175, 80, 0.2);
-            border-color: #4caf50;
-        }
-
-        .participant-name {
-            font-weight: bold;
-            font-size: 1.1rem;
-        }
-
-        .vote-count {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-weight: bold;
-            color: #4ecdc4;
-        }
-
-        .vote-btn {
-            background: linear-gradient(45deg, #4ecdc4, #44a08d);
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            color: white;
-            cursor: pointer;
-            margin-left: 1rem;
-            transition: all 0.3s ease;
-        }
-
-        .vote-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 4px 20px rgba(78, 205, 196, 0.4);
-        }
-
-        .vote-btn:disabled {
-            background: #555;
-            cursor: not-allowed;
-        }
-
-        .match-info {
-            text-align: center;
-            margin-top: 1rem;
-            padding-top: 1rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            font-size: 0.9rem;
-            color: #888;
-        }
-
-        .timer {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            display: inline-block;
-            margin: 0.5rem;
-            font-family: monospace;
-            font-size: 1.1rem;
-            color: #ff6b6b;
-        }
-
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: #4ecdc4;
-            animation: spin 1s ease-in-out infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .status-indicator {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #4caf50;
-            animation: pulse 2s infinite;
-        }
-
-        .status-indicator.inactive {
-            background: #f44336;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-
-        .footer {
-            text-align: center;
-            padding: 2rem;
-            background: rgba(0, 0, 0, 0.3);
-            margin-top: 3rem;
-        }
-
-        .footer a {
-            color: #4ecdc4;
-            text-decoration: none;
-            font-weight: bold;
-            transition: color 0.3s ease;
-        }
-
-        .footer a:hover {
-            color: #ff6b6b;
-        }
-
-        .notification {
-            position: fixed;
-            top: 2rem;
-            right: 2rem;
-            background: rgba(76, 175, 80, 0.9);
-            color: white;
-            padding: 1rem 2rem;
-            border-radius: 10px;
-            transform: translateX(400px);
-            transition: transform 0.3s ease;
-            z-index: 1000;
-            backdrop-filter: blur(10px);
-        }
-
-        .notification.show {
-            transform: translateX(0);
-        }
-
-        .notification.error {
-            background: rgba(244, 67, 54, 0.9);
-        }
-
-        .participants-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin: 2rem 0;
-        }
-
-        .participant-card {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 15px;
-            padding: 1.5rem;
-            text-align: center;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            transition: all 0.3s ease;
-        }
-
-        .participant-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-        }
-
-        .participant-card.eliminated {
-            opacity: 0.5;
-            filter: grayscale(1);
-        }
-
-        @media (max-width: 768px) {
-            .bracket {
-                min-width: 800px;
-            }
-            
-            .header h1 {
-                font-size: 2rem;
-            }
-            
-            .match {
-                min-width: 200px;
-            }
-        }
-    </style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Bracket Voting – Monad Testnet</title>
+  <style>
+    :root{color-scheme:dark}
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:#000;color:#e5e7eb;font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial,Apple Color Emoji,Segoe UI Emoji}
+    a{color:#a5b4fc;text-decoration:none}
+    a:hover{text-decoration:underline}
+    .container{max-width:1200px;margin:0 auto;padding:24px}
+    .header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:24px}
+    .title{font-size:22px;font-weight:700;letter-spacing:.2px}
+    .card{background:rgba(17,17,17,.9);border:1px solid #262626;border-radius:18px;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+    .toolbar{display:flex;align-items:center;gap:10px}
+    .btn{padding:10px 14px;border-radius:12px;border:1px solid #333;background:#111;color:#eee;cursor:pointer;transition:.15s}
+    .btn:hover{background:#151515}
+    .btn.primary{background:#4f46e5;border-color:#4f46e5}
+    .btn.primary:hover{filter:brightness(1.1)}
+    .badge{font-size:12px;padding:6px 10px;border:1px solid #2a2a2a;border-radius:999px;background:#0b0b0b;color:#cbd5e1}
+    .grid{display:grid;grid-template-columns:1fr 320px;gap:18px}
+    .bracket{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;align-items:center}
+    .col{display:flex;flex-direction:column;gap:16px}
+    .match{padding:12px}
+    .row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:12px;border:1px solid #2a2a2a;background:linear-gradient(180deg,#0b0b0b,#0a0a0a)}
+    .row.win{border-color:#16a34a}
+    .row.lose{opacity:.75}
+    .pname{font-weight:700}
+    .actions{display:flex;align-items:center;gap:8px}
+    input.qty{width:64px;background:#0c0c0c;border:1px solid #2a2a2a;border-radius:10px;padding:8px;color:#fff}
+    .timer{font-size:12px;color:#9ca3af}
+    .panel{padding:16px}
+    .subtitle{font-weight:700;margin:0 0 8px 0;font-size:14px;color:#a3a3a3}
+    .footer{margin-top:28px;text-align:center;color:#9ca3af}
+    .footer a{color:#9ca3af}
+    .split{display:flex;gap:12px;align-items:center;justify-content:space-between}
+    .muted{color:#9ca3af}
+    .pill{padding:6px 10px;border-radius:999px;background:#111;border:1px solid #2a2a2a}
+    .hint{font-size:12px;color:#a3a3a3}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+    .logo{width:26px;height:26px;border-radius:50%;object-fit:cover;border:1px solid #2a2a2a;background:#111}
+    /* connectors (simple) */
+    .connector{height:2px;background:#1f2937;margin:4px 0;border-radius:1px}
+    @media (max-width: 980px){
+      .grid{grid-template-columns:1fr}
+      .bracket{grid-template-columns:1fr}
+    }
+  </style>
 </head>
 <body>
+  <div class="container">
     <div class="header">
-        <h1>🏆 Tournament Voting Bracket</h1>
-        <p>Vote for your favorite projects and decide the ultimate winner!</p>
+      <div>
+        <div class="title">🏆 Bracket Voting — Monad Testnet</div>
+        <div class="muted hint">8 peserta • Round 1 = 4 match (24 jam) • Biaya per vote: <b>0.1 MON</b> • ChainID <span class="mono">10143</span></div>
+      </div>
+      <div class="toolbar">
+        <span id="networkBadge" class="badge">Not connected</span>
+        <button id="connectBtn" class="btn">Connect Wallet</button>
+      </div>
     </div>
 
-    <div class="wallet-section">
-        <button id="connectWallet" class="connect-wallet">Connect Wallet</button>
-        <div id="walletInfo" class="wallet-info" style="display: none;">
-            <p><strong>Connected:</strong> <span id="walletAddress"></span></p>
-            <p><strong>Balance:</strong> <span id="walletBalance"></span> MON</p>
-            <p><strong>Network:</strong> Monad Testnet</p>
+    <div class="grid">
+      <div class="card panel">
+        <div class="split">
+          <div class="subtitle">Bracket</div>
+          <div class="hint">Contract: <span class="mono" id="addr"></span></div>
         </div>
-    </div>
+        <div id="bracket" class="bracket"></div>
+      </div>
 
-    <div id="adminPanel" class="admin-panel" style="display: none;">
-        <h2>🔧 Admin Panel</h2>
-        <button id="startTournament" class="admin-btn">Start Tournament</button>
-        <button id="forceFinish" class="admin-btn">Force Finish Expired Matches</button>
-        <div id="adminStatus"></div>
-    </div>
-
-    <div class="tournament-info">
-        <h2>Tournament Status</h2>
-        <div id="tournamentStatus">
-            <p><strong>State:</strong> <span id="tournamentState">Loading...</span></p>
-            <p><strong>Current Round:</strong> <span id="currentRound">-</span></p>
-            <p><strong>Total Rounds:</strong> <span id="totalRounds">-</span></p>
+      <div class="card panel">
+        <div class="subtitle">Admin (owner only)</div>
+        <div class="hint" style="margin-bottom:10px">Tombol ini hanya berhasil bila wallet yang terhubung adalah <i>owner</i> kontrak.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn primary" id="startBtn">Start Tournament</button>
+          <button class="btn" id="forceBtn">Force Finish Expired</button>
         </div>
-        <div style="margin-top: 1rem;">
-            <h3>Round 1 Matchups:</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-top: 1rem;">
-                <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 10px; text-align: center;">
-                    <strong>Match 1:</strong><br>LUMITERRA vs KURU EXCHANGE
-                </div>
-                <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 10px; text-align: center;">
-                    <strong>Match 2:</strong><br>KIZZY MOBILE vs CRYSTAL
-                </div>
-                <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 10px; text-align: center;">
-                    <strong>Match 3:</strong><br>CULT vs aPriori
-                </div>
-                <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 10px; text-align: center;">
-                    <strong>Match 4:</strong><br>Magma vs O.LAB
-                </div>
-            </div>
+        <div style="height:8px"></div>
+        <div class="subtitle">Finish Match (manual)</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input id="roundInput" class="qty" type="number" min="1" value="1"/>
+          <input id="matchInput" class="qty" type="number" min="1" value="1"/>
+          <button class="btn" id="finishBtn">Finish</button>
         </div>
-    </div>
-
-    <div id="participantsSection" class="tournament-info">
-        <h2>Participants</h2>
-        <div id="participantsList" class="participants-grid"></div>
-    </div>
-
-    <div class="bracket-container">
-        <div id="bracket" class="bracket">
-            <!-- Bracket will be generated dynamically -->
-        </div>
+        <div style="height:12px"></div>
+        <div class="subtitle">Treasury</div>
+        <div class="mono hint" id="treasury"></div>
+      </div>
     </div>
 
     <div class="footer">
-        <p>Created by <a href="https://x.com/ega_2ez4crypto" target="_blank">@ega_2ez4crypto</a></p>
-        <p>Powered by Monad Testnet | Contract: 0xef14...E5F7</p>
+      created by <a href="https://x.com/ega_2ez4crypto" target="_blank" rel="noopener">https://x.com/ega_2ez4crypto</a>
     </div>
+  </div>
 
-    <div id="notification" class="notification"></div>
+  <!-- Ethers v6 via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.min.js"></script>
 
-    <script>
-        // Contract configuration
-        const CONTRACT_ADDRESS = '0xef14220Aa627014e0ad99c4f8be54723b901E5F7';
-        const TREASURY_ADDRESS = '0x6c2AA81b02a940c04A570aFFe7a413ca54C625cf';
-        const CHAIN_ID = 10143;
-        const RPC_URL = 'https://testnet-rpc.monad.xyz';
-        const VOTE_COST = '0.1'; // 0.1 MON
+  <script>
+  // ====== CONFIG ======
+  const RPC_URL = 'https://testnet-rpc.monad.xyz';
+  const CHAIN_ID = 10143;
+  const CONTRACT_ADDRESS = '0x31Cab363Ef737D83Ea72E04C811397049e06b619';
+  const TREASURY = '0x6c2AA81b02a940c04A570aFFe7a413ca54C625cf';
+  const VOTE_COST = 0.1; // MON per vote
 
-        // Contract ABI
-        const CONTRACT_ABI = [
-            {
-                "inputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "roundNum",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "matchNum",
-                        "type": "uint256"
-                    }
-                ],
-                "name": "finishMatch",
-                "outputs": [],
-                "stateMutability": "nonpayable",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "forceFinishExpiredMatches",
-                "outputs": [],
-                "stateMutability": "nonpayable",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "stateMutability": "nonpayable",
-                "type": "constructor"
-            },
-            {
-                "anonymous": false,
-                "inputs": [
-                    {
-                        "indexed": false,
-                        "internalType": "uint256",
-                        "name": "round",
-                        "type": "uint256"
-                    },
-                    {
-                        "indexed": false,
-                        "internalType": "uint256",
-                        "name": "matchIndex",
-                        "type": "uint256"
-                    },
-                    {
-                        "indexed": false,
-                        "internalType": "uint256",
-                        "name": "winner",
-                        "type": "uint256"
-                    }
-                ],
-                "name": "MatchFinished",
-                "type": "event"
-            },
-            {
-                "anonymous": false,
-                "inputs": [
-                    {
-                        "indexed": false,
-                        "internalType": "uint256",
-                        "name": "round",
-                        "type": "uint256"
-                    }
-                ],
-                "name": "RoundFinished",
-                "type": "event"
-            },
-            {
-                "inputs": [],
-                "name": "startTournament",
-                "outputs": [],
-                "stateMutability": "nonpayable",
-                "type": "function"
-            },
-            {
-                "anonymous": false,
-                "inputs": [
-                    {
-                        "indexed": false,
-                        "internalType": "uint256",
-                        "name": "winner",
-                        "type": "uint256"
-                    }
-                ],
-                "name": "TournamentFinished",
-                "type": "event"
-            },
-            {
-                "inputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "roundNum",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "matchNum",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "participantId",
-                        "type": "uint256"
-                    }
-                ],
-                "name": "vote",
-                "outputs": [],
-                "stateMutability": "payable",
-                "type": "function"
-            },
-            {
-                "anonymous": false,
-                "inputs": [
-                    {
-                        "indexed": true,
-                        "internalType": "address",
-                        "name": "voter",
-                        "type": "address"
-                    },
-                    {
-                        "indexed": false,
-                        "internalType": "uint256",
-                        "name": "round",
-                        "type": "uint256"
-                    },
-                    {
-                        "indexed": false,
-                        "internalType": "uint256",
-                        "name": "matchIndex",
-                        "type": "uint256"
-                    },
-                    {
-                        "indexed": false,
-                        "internalType": "uint256",
-                        "name": "participant",
-                        "type": "uint256"
-                    },
-                    {
-                        "indexed": false,
-                        "internalType": "uint256",
-                        "name": "amount",
-                        "type": "uint256"
-                    }
-                ],
-                "name": "VoteCast",
-                "type": "event"
-            },
-            {
-                "inputs": [],
-                "name": "currentRound",
-                "outputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "",
-                        "type": "uint256"
-                    }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "getCurrentMatches",
-                "outputs": [
-                    {
-                        "internalType": "uint256[]",
-                        "name": "",
-                        "type": "uint256[]"
-                    }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "roundNum",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "matchNum",
-                        "type": "uint256"
-                    }
-                ],
-                "name": "getMatch",
-                "outputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "participant1Id",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "participant2Id",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "votes1",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "votes2",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "winnerId",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "startTime",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "endTime",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "bool",
-                        "name": "finished",
-                        "type": "bool"
-                    }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "id",
-                        "type": "uint256"
-                    }
-                ],
-                "name": "getParticipant",
-                "outputs": [
-                    {
-                        "internalType": "string",
-                        "name": "name",
-                        "type": "string"
-                    },
-                    {
-                        "internalType": "bool",
-                        "name": "active",
-                        "type": "bool"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "totalVotes",
-                        "type": "uint256"
-                    }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "getParticipantCount",
-                "outputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "",
-                        "type": "uint256"
-                    }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "getRoundCount",
-                "outputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "",
-                        "type": "uint256"
-                    }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "getTournamentState",
-                "outputs": [
-                    {
-                        "internalType": "enum TournamentVoting.TournamentState",
-                        "name": "tournamentState",
-                        "type": "uint8"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "round",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "totalRounds",
-                        "type": "uint256"
-                    }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "owner",
-                "outputs": [
-                    {
-                        "internalType": "address",
-                        "name": "",
-                        "type": "address"
-                    }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "",
-                        "type": "uint256"
-                    }
-                ],
-                "name": "participants",
-                "outputs": [
-                    {
-                        "internalType": "string",
-                        "name": "name",
-                        "type": "string"
-                    },
-                    {
-                        "internalType": "bool",
-                        "name": "active",
-                        "type": "bool"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "totalVotes",
-                        "type": "uint256"
-                    }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "ROUND_DURATION",
-                "outputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "",
-                        "type": "uint256"
-                    }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "",
-                        "type": "uint256"
-                    }
-                ],
-                "name": "rounds",
-                "outputs": [
-                    {
-                        "internalType": "bool",
-                        "name": "finished",
-                        "type": "bool"
-                    }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "state",
-                "outputs": [
-                    {
-                        "internalType": "enum TournamentVoting.TournamentState",
-                        "name": "",
-                        "type": "uint8"
-                    }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "treasury",
-                "outputs": [
-                    {
-                        "internalType": "address",
-                        "name": "",
-                        "type": "address"
-                    }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [
-                    {
-                        "internalType": "address",
-                        "name": "",
-                        "type": "address"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "",
-                        "type": "uint256"
-                    },
-                    {
-                        "internalType": "uint256",
-                        "name": "",
-                        "type": "uint256"
-                    }
-                ],
-                "name": "userVotes",
-                "outputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "",
-                        "type": "uint256"
-                    }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "VOTE_COST",
-                "outputs": [
-                    {
-                        "internalType": "uint256",
-                        "name": "",
-                        "type": "uint256"
-                    }
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            }
-        ];
+  // Optional: logo URLs (you can change later)
+  const PARTICIPANT_LOGOS = {
+    1: '', // LUMITERRA
+    2: '', // KURU EXCHANGE
+    3: '', // KIZZY MOBILE
+    4: '', // CRYSTAL
+    5: '', // CULT
+    6: '', // aPriori
+    7: '', // Magma
+    8: ''  // O.LAB
+  };
 
-        // Participants list with predetermined bracket matchups
-        const PARTICIPANTS = [
-            "LUMITERRA",      // ID: 0
-            "KURU EXCHANGE",  // ID: 1
-            "KIZZY MOBILE",   // ID: 2
-            "CRYSTAL",        // ID: 3
-            "CULT",           // ID: 4
-            "aPriori",        // ID: 5
-            "Magma",          // ID: 6
-            "O.LAB"           // ID: 7
-        ];
+  // Fallback names if on-chain names are empty
+  const FALLBACK_NAMES = [
+    null,
+    'LUMITERRA','KURU EXCHANGE','KIZZY MOBILE','CRYSTAL',
+    'CULT','aPriori','Magma','O.LAB'
+  ];
 
-        // Predetermined bracket matchups for Round 1
-        const ROUND_1_MATCHUPS = [
-            { match: 0, p1: 0, p2: 1, desc: "LUMITERRA vs KURU EXCHANGE" },
-            { match: 1, p1: 2, p2: 3, desc: "KIZZY MOBILE vs CRYSTAL" },
-            { match: 2, p1: 4, p2: 5, desc: "CULT vs aPriori" },
-            { match: 3, p1: 6, p2: 7, desc: "Magma vs O.LAB" }
-        ];
+  document.getElementById('addr').textContent = CONTRACT_ADDRESS;
+  document.getElementById('treasury').textContent = TREASURY;
 
-        // Global variables
-        let provider;
-        let signer;
-        let contract;
-        let userAccount;
-        let isOwner = false;
+  // ====== ABI (from user) ======
+  const ABI = [
+	{"inputs":[{"internalType":"uint256","name":"roundNum","type":"uint256"},{"internalType":"uint256","name":"matchNum","type":"uint256"}],"name":"finishMatch","outputs":[],"stateMutability":"nonpayable","type":"function"},
+	{"inputs":[],"name":"forceFinishExpiredMatches","outputs":[],"stateMutability":"nonpayable","type":"function"},
+	{"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
+	{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"round","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"matchIndex","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"winner","type":"uint256"}],"name":"MatchFinished","type":"event"},
+	{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"round","type":"uint256"}],"name":"RoundFinished","type":"event"},
+	{"inputs":[],"name":"startTournament","outputs":[],"stateMutability":"nonpayable","type":"function"},
+	{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"winner","type":"uint256"}],"name":"TournamentFinished","type":"event"},
+	{"inputs":[{"internalType":"uint256","name":"roundNum","type":"uint256"},{"internalType":"uint256","name":"matchNum","type":"uint256"},{"internalType":"uint256","name":"participantId","type":"uint256"}],"name":"vote","outputs":[],"stateMutability":"payable","type":"function"},
+	{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"voter","type":"address"},{"indexed":false,"internalType":"uint256","name":"round","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"matchIndex","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"participant","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"VoteCast","type":"event"},
+	{"inputs":[],"name":"currentRound","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+	{"inputs":[],"name":"getCurrentMatches","outputs":[{"internalType":"uint256[]","name":"","type":"uint256[]"}],"stateMutability":"view","type":"function"},
+	{"inputs":[{"internalType":"uint256","name":"roundNum","type":"uint256"},{"internalType":"uint256","name":"matchNum","type":"uint256"}],"name":"getMatch","outputs":[{"internalType":"uint256","name":"participant1Id","type":"uint256"},{"internalType":"uint256","name":"participant2Id","type":"uint256"},{"internalType":"uint256","name":"votes1","type":"uint256"},{"internalType":"uint256","name":"votes2","type":"uint256"},{"internalType":"uint256","name":"winnerId","type":"uint256"},{"internalType":"uint256","name":"startTime","type":"uint256"},{"internalType":"uint256","name":"endTime","type":"uint256"},{"internalType":"bool","name":"finished","type":"bool"}],"stateMutability":"view","type":"function"},
+	{"inputs":[{"internalType":"uint256","name":"id","type":"uint256"}],"name":"getParticipant","outputs":[{"internalType":"string","name":"name","type":"string"},{"internalType":"bool","name":"active","type":"bool"},{"internalType":"uint256","name":"totalVotes","type":"uint256"}],"stateMutability":"view","type":"function"},
+	{"inputs":[],"name":"getParticipantCount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+	{"inputs":[],"name":"getRoundCount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+	{"inputs":[],"name":"getTournamentState","outputs":[{"internalType":"uint8","name":"tournamentState","type":"uint8"},{"internalType":"uint256","name":"round","type":"uint256"},{"internalType":"uint256","name":"totalRounds","type":"uint256"}],"stateMutability":"view","type":"function"},
+	{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+	{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"participants","outputs":[{"internalType":"string","name":"name","type":"string"},{"internalType":"bool","name":"active","type":"bool"},{"internalType":"uint256","name":"totalVotes","type":"uint256"}],"stateMutability":"view","type":"function"},
+	{"inputs":[],"name":"ROUND_DURATION","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+	{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"rounds","outputs":[{"internalType":"bool","name":"finished","type":"bool"}],"stateMutability":"view","type":"function"},
+	{"inputs":[],"name":"state","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},
+	{"inputs":[],"name":"treasury","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+	{"inputs":[{"internalType":"address","name":"","type":"address"},{"internalType":"uint256","name":"","type":"uint256"},{"internalType":"uint256","name":"","type":"uint256"}],"name":"userVotes","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+	{"inputs":[],"name":"VOTE_COST","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
+  ];
 
-        // Tournament states
-        const TOURNAMENT_STATES = {
-            0: 'Not Started',
-            1: 'Active',
-            2: 'Finished'
-        };
+  // ====== Providers & Contract ======
+  const { BrowserProvider, JsonRpcProvider, Contract, parseEther } = ethers;
+  const readProvider = new JsonRpcProvider(RPC_URL, CHAIN_ID);
+  const readContract = new Contract(CONTRACT_ADDRESS, ABI, readProvider);
 
-        // Initialize the application
-        async function init() {
-            if (typeof window.ethereum !== 'undefined') {
-                try {
-                    provider = new ethers.providers.JsonRpcProvider(RPC_URL);
-                    setupEventListeners();
-                    await loadTournamentData();
-                    setInterval(updateTimers, 1000);
-                    setInterval(loadTournamentData, 30000); // Refresh every 30 seconds
-                } catch (error) {
-                    console.error('Init error:', error);
-                    showNotification('Error initializing app', 'error');
-                }
-            } else {
-                showNotification('Please install MetaMask to use this application', 'error');
-            }
-        }
+  let browserProvider = null; // set after connect
+  let writeContract = null;
+  let currentAccount = null;
 
-        // Setup event listeners
-        function setupEventListeners() {
-            document.getElementById('connectWallet').addEventListener('click', connectWallet);
-            document.getElementById('startTournament').addEventListener('click', startTournament);
-            document.getElementById('forceFinish').addEventListener('click', forceFinishExpiredMatches);
-        }
+  async function ensureChain(){
+    if(!window.ethereum) throw new Error('Wallet not found');
+    const provider = new BrowserProvider(window.ethereum);
+    const net = await provider.getNetwork();
+    if(Number(net.chainId) !== CHAIN_ID){
+      await provider.send('wallet_addEthereumChain', [{
+        chainId: '0x'+CHAIN_ID.toString(16),
+        chainName: 'Monad Testnet',
+        nativeCurrency: { name: 'MON', symbol: 'MON', decimals: 18 },
+        rpcUrls: [RPC_URL],
+        blockExplorerUrls: []
+      }]);
+    }
+  }
 
-        // Connect wallet
-        async function connectWallet() {
-            try {
-                if (typeof window.ethereum === 'undefined') {
-                    throw new Error('MetaMask is not installed');
-                }
+  async function connect(){
+    await ensureChain();
+    browserProvider = new BrowserProvider(window.ethereum);
+    const accounts = await browserProvider.send('eth_requestAccounts', []);
+    currentAccount = accounts[0];
+    const signer = await browserProvider.getSigner();
+    writeContract = new Contract(CONTRACT_ADDRESS, ABI, signer);
+    document.getElementById('connectBtn').textContent = currentAccount.slice(0,6)+'…'+currentAccount.slice(-4);
+    document.getElementById('networkBadge').textContent = 'Connected';
+    document.getElementById('networkBadge').className = 'badge';
+  }
 
-                // Request account access
-                await window.ethereum.request({ method: 'eth_requestAccounts' });
-                
-                // Switch to Monad testnet
-                try {
-                    await window.ethereum.request({
-                        method: 'wallet_switchEthereumChain',
-                        params: [{ chainId: `0x${CHAIN_ID.toString(16)}` }]
-                    });
-                } catch (switchError) {
-                    if (switchError.code === 4902) {
-                        // Add Monad testnet
-                        await window.ethereum.request({
-                            method: 'wallet_addEthereumChain',
-                            params: [{
-                                chainId: `0x${CHAIN_ID.toString(16)}`,
-                                chainName: 'Monad Testnet',
-                                rpcUrls: [RPC_URL],
-                                nativeCurrency: {
-                                    name: 'MON',
-                                    symbol: 'MON',
-                                    decimals: 18
-                                }
-                            }]
-                        });
-                    }
-                }
+  document.getElementById('connectBtn').addEventListener('click', async()=>{
+    try{ await connect(); }catch(e){ alert(e.message||e) }
+  });
 
-                // Setup provider and signer
-                provider = new ethers.providers.Web3Provider(window.ethereum);
-                signer = provider.getSigner();
-                contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-                
-                // Get account
-                userAccount = await signer.getAddress();
-                
-                // Check if user is owner
-                const owner = await contract.owner();
-                isOwner = userAccount.toLowerCase() === owner.toLowerCase();
-                
-                // Update UI
-                document.getElementById('connectWallet').style.display = 'none';
-                document.getElementById('walletInfo').style.display = 'block';
-                document.getElementById('walletAddress').textContent = `${userAccount.substring(0, 6)}...${userAccount.substring(38)}`;
-                
-                // Get balance
-                const balance = await provider.getBalance(userAccount);
-                document.getElementById('walletBalance').textContent = parseFloat(ethers.utils.formatEther(balance)).toFixed(4);
-                
-                // Show admin panel if owner
-                if (isOwner) {
-                    document.getElementById('adminPanel').style.display = 'block';
-                }
-                
-                showNotification('Wallet connected successfully!');
-                await loadTournamentData();
-                
-            } catch (error) {
-                console.error('Connection error:', error);
-                showNotification(`Connection failed: ${error.message}`, 'error');
-            }
-        }
+  // ====== Reads ======
+  async function getParticipantCount(){ return Number(await readContract.getParticipantCount()); }
+  async function getParticipant(id){ const p = await readContract.getParticipant(id); return { id, name: p.name || (FALLBACK_NAMES[id]||('P'+id)), active: p.active, totalVotes: Number(p.totalVotes) }; }
+  async function getMatch(roundNum, matchNum){
+    const m = await readContract.getMatch(roundNum, matchNum);
+    const [p1,p2,v1,v2,wid,st,et,fin] = m;
+    return { round: Number(roundNum), match: Number(matchNum), p1: Number(p1), p2: Number(p2), v1: Number(v1), v2: Number(v2), winnerId: Number(wid), startTime: Number(st), endTime: Number(et), finished: Boolean(fin) };
+  }
+  async function getTournamentState(){
+    const s = await readContract.getTournamentState();
+    return { state: Number(s.tournamentState), round: Number(s.round), totalRounds: Number(s.totalRounds) };
+  }
 
-        // Load tournament data
-        async function loadTournamentData() {
-            try {
-                if (!contract && provider) {
-                    contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
-                }
-                
-                if (!contract) return;
+  // ====== Writes ======
+  async function vote(roundNum, matchNum, participantId, qty){
+    if(!writeContract) await connect();
+    const total = (VOTE_COST * Number(qty)).toString();
+    const tx = await writeContract.vote(roundNum, matchNum, participantId, { value: parseEther(total) });
+    await tx.wait();
+    toast('Vote submitted: '+tx.hash.slice(0,10)+'…');
+    await refresh();
+  }
+  async function startTournament(){ if(!writeContract) await connect(); const tx = await writeContract.startTournament(); await tx.wait(); toast('Tournament started'); await refresh(); }
+  async function finishMatch(roundNum, matchNum){ if(!writeContract) await connect(); const tx = await writeContract.finishMatch(roundNum, matchNum); await tx.wait(); toast('Match finished'); await refresh(); }
+  async function forceFinish(){ if(!writeContract) await connect(); const tx = await writeContract.forceFinishExpiredMatches(); await tx.wait(); toast('Forced finish executed'); await refresh(); }
 
-                // Get tournament state
-                const tournamentState = await contract.getTournamentState();
-                document.getElementById('tournamentState').textContent = TOURNAMENT_STATES[tournamentState.tournamentState];
-                document.getElementById('currentRound').textContent = tournamentState.round.toString();
-                document.getElementById('totalRounds').textContent = tournamentState.totalRounds.toString();
+  // ====== UI Helpers ======
+  function fmtTime(ms){
+    if(ms<=0) return '00:00:00';
+    const s = Math.floor(ms/1000); const h=Math.floor(s/3600); const m=Math.floor((s%3600)/60); const ss=s%60;
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+  }
+  function imgTag(id){
+    const url = PARTICIPANT_LOGOS[id]||'';
+    return `<img class="logo" src="${url||'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"26\" height=\"26\"><rect width=\"100%\" height=\"100%\" fill=\"#111\"/><text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\" fill=\"#6b7280\" font-size=\"12\" font-family=\"Arial\">${id}</text></svg>')}" alt="logo">`;
+  }
+  function qtyInput(id){ return `<input class="qty" id="qty-${id}" type="number" min="1" value="1">`; }
+  function totalLabel(qty){ const t = (Number(qty||1)*VOTE_COST).toFixed(2); return `<span class="hint">Total: ${t} MON</span>` }
 
-                // Load participants
-                await loadParticipants();
-                
-                // Load bracket
-                await loadBracket();
-                
-            } catch (error) {
-                console.error('Error loading tournament data:', error);
-                showNotification('Error loading tournament data', 'error');
-            }
-        }
+  let participants = [];
 
-        // Load participants
-        async function loadParticipants() {
-            try {
-                const participantsList = document.getElementById('participantsList');
-                participantsList.innerHTML = '';
-                
-                const participantCount = await contract.getParticipantCount();
-                
-                for (let i = 0; i < participantCount; i++) {
-                    const participant = await contract.getParticipant(i);
-                    
-                    const card = document.createElement('div');
-                    card.className = `participant-card ${!participant.active ? 'eliminated' : ''}`;
-                    card.innerHTML = `
-                        <h3>${participant.name}</h3>
-                        <p><strong>Total Votes:</strong> ${participant.totalVotes}</p>
-                        <p><strong>Status:</strong> ${participant.active ? 'Active' : 'Eliminated'}</p>
-                    `;
-                    
-                    participantsList.appendChild(card);
-                }
-                
-            } catch (error) {
-                console.error('Error loading participants:', error);
-            }
-        }
+  async function refresh(){
+    try{
+      const count = Math.max(8, await getParticipantCount());
+      const list = [];
+      for(let i=1;i<=count;i++){ list.push(await getParticipant(i)); }
+      participants = list;
 
-        // Load bracket
-        async function loadBracket() {
-            try {
-                const bracket = document.getElementById('bracket');
-                bracket.innerHTML = '';
-                
-                const tournamentState = await contract.getTournamentState();
-                const currentRound = parseInt(tournamentState.round);
-                const totalRounds = parseInt(tournamentState.totalRounds);
-                
-                // Generate bracket structure
-                for (let round = 0; round < totalRounds; round++) {
-                    const roundDiv = document.createElement('div');
-                    roundDiv.className = 'round';
-                    
-                    const roundTitle = document.createElement('h3');
-                    if (round === totalRounds - 1) {
-                        roundTitle.textContent = 'FINAL';
-                    } else if (round === totalRounds - 2) {
-                        roundTitle.textContent = 'SEMI FINAL';
-                    } else {
-                        roundTitle.textContent = `ROUND ${round + 1}`;
-                    }
-                    roundDiv.appendChild(roundTitle);
-                    
-                    // Calculate matches for this round
-                    const matchesInRound = Math.pow(2, totalRounds - round - 1);
-                    
-                    for (let match = 0; match < matchesInRound; match++) {
-                        const matchDiv = await createMatchDiv(round, match, round === currentRound);
-                        roundDiv.appendChild(matchDiv);
-                    }
-                    
-                    bracket.appendChild(roundDiv);
-                }
-                
-                // Add bracket lines/connections (visual enhancement)
-                addBracketConnections(totalRounds);
-                
-            } catch (error) {
-                console.error('Error loading bracket:', error);
-            }
-        }
+      const state = await getTournamentState();
+      // Build matches for up to 3 rounds (8->4, 4->2, 2->1)
+      const r1 = [await getMatch(1,1),await getMatch(1,2),await getMatch(1,3),await getMatch(1,4)];
+      const r2 = [await getMatch(2,1),await getMatch(2,2)];
+      const r3 = [await getMatch(3,1)];
+      renderBracket({state, r1, r2, r3});
+    }catch(e){ console.error(e); }
+  }
 
-        // Add visual connections between bracket rounds
-        function addBracketConnections(totalRounds) {
-            // This function could add SVG lines connecting matches
-            // For now, we'll rely on CSS spacing and visual alignment
-        }
+  function rowHTML(m, which){
+    const pid = which===1? m.p1 : m.p2;
+    const votes = which===1? m.v1 : m.v2;
+    const oppVotes = which===1? m.v2 : m.v1;
+    const isWin = m.finished && ((votes>=oppVotes) || m.winnerId===pid);
+    const cls = m.finished? (isWin? 'row win':'row lose') : 'row';
+    const name = (participants[pid-1]?.name) || (FALLBACK_NAMES[pid]||('P'+pid));
+    return `
+      <div class="${cls}">
+        <div style="display:flex;align-items:center;gap:8px;min-width:0">
+          ${imgTag(pid)}
+          <div class="pname" title="ID ${pid}">${name}</div>
+        </div>
+        <div class="actions">
+          <div class="badge" title="votes">${votes}</div>
+          ${!m.finished ? `<div style="display:flex;align-items:center;gap:6px">
+            ${qtyInput(`${m.round}-${m.match}-${pid}`)}
+            <button class="btn primary" onclick="handleVote(${m.round},${m.match},${pid})">Vote</button>
+          </div>` : ''}
+        </div>
+      </div>`;
+  }
 
-        // Create match div
-        async function createMatchDiv(roundNum, matchNum, isActive) {
-            const matchDiv = document.createElement('div');
-            matchDiv.className = 'match';
-            matchDiv.id = `match-${roundNum}-${matchNum}`;
-            
-            try {
-                const matchData = await contract.getMatch(roundNum, matchNum);
-                
-                const participant1 = await contract.getParticipant(matchData.participant1Id);
-                const participant2 = await contract.getParticipant(matchData.participant2Id);
-                
-                const isFinished = matchData.finished;
-                const winner = matchData.winnerId;
-                
-                // Add match description for Round 1
-                let matchDescription = '';
-                if (roundNum === 0) {
-                    const matchupInfo = ROUND_1_MATCHUPS.find(m => m.match === matchNum);
-                    if (matchupInfo) {
-                        matchDescription = `<div style="text-align: center; padding: 0.5rem; font-size: 0.9rem; color: #4ecdc4; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 1rem;">
-                            <strong>${matchupInfo.desc}</strong>
-                        </div>`;
-                    }
-                }
-                
-                matchDiv.innerHTML = `
-                    <div class="status-indicator ${isActive && !isFinished ? '' : 'inactive'}"></div>
-                    ${matchDescription}
-                    
-                    <div class="participant ${winner.toString() === matchData.participant1Id.toString() ? 'winner' : ''}" 
-                         onclick="${isActive && !isFinished && userAccount ? `vote(${roundNum}, ${matchNum}, ${matchData.participant1Id})` : ''}">
-                        <span class="participant-name">${participant1.name}</span>
-                        <div>
-                            <span class="vote-count">${matchData.votes1}</span>
-                            ${isActive && !isFinished && userAccount ? `<button class="vote-btn" onclick="event.stopPropagation(); vote(${roundNum}, ${matchNum}, ${matchData.participant1Id})">Vote</button>` : ''}
-                        </div>
-                    </div>
-                    
-                    <div class="participant ${winner.toString() === matchData.participant2Id.toString() ? 'winner' : ''}"
-                         onclick="${isActive && !isFinished && userAccount ? `vote(${roundNum}, ${matchNum}, ${matchData.participant2Id})` : ''}">
-                        <span class="participant-name">${participant2.name}</span>
-                        <div>
-                            <span class="vote-count">${matchData.votes2}</span>
-                            ${isActive && !isFinished && userAccount ? `<button class="vote-btn" onclick="event.stopPropagation(); vote(${roundNum}, ${matchNum}, ${matchData.participant2Id})">Vote</button>` : ''}
-                        </div>
-                    </div>
-                    
-                    <div class="match-info">
-                        ${isFinished ? 
-                            `<p><strong>Winner:</strong> ${winner.toString() === matchData.participant1Id.toString() ? participant1.name : participant2.name}</p>
-                             <p style="color: #4caf50; font-size: 0.9rem;">✅ Match Completed</p>` :
-                            isActive ? 
-                                `<div class="timer" id="timer-${roundNum}-${matchNum}">Loading...</div>
-                                 <p>Vote Cost: ${VOTE_COST} MON</p>
-                                 <p style="color: #ff6b6b; font-size: 0.9rem;">🔴 LIVE</p>` :
-                                '<p style="color: #888;">⏳ Waiting to start</p>'
-                        }
-                    </div>
-                `;
-                
-                // Update timer if match is active
-                if (isActive && !isFinished) {
-                    updateMatchTimer(roundNum, matchNum, matchData.endTime);
-                }
-                
-            } catch (error) {
-                console.error(`Error loading match ${roundNum}-${matchNum}:`, error);
-                
-                // For Round 1, show predetermined matchups even if contract data isn't ready
-                let matchDescription = '';
-                let participant1Name = 'TBD';
-                let participant2Name = 'TBD';
-                
-                if (roundNum === 0 && matchNum < ROUND_1_MATCHUPS.length) {
-                    const matchupInfo = ROUND_1_MATCHUPS[matchNum];
-                    matchDescription = `<div style="text-align: center; padding: 0.5rem; font-size: 0.9rem; color: #4ecdc4; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 1rem;">
-                        <strong>${matchupInfo.desc}</strong>
-                    </div>`;
-                    participant1Name = PARTICIPANTS[matchupInfo.p1];
-                    participant2Name = PARTICIPANTS[matchupInfo.p2];
-                }
-                
-                matchDiv.innerHTML = `
-                    <div class="status-indicator inactive"></div>
-                    ${matchDescription}
-                    
-                    <div class="participant">
-                        <span class="participant-name">${participant1Name}</span>
-                        <span class="vote-count">0</span>
-                    </div>
-                    <div class="participant">
-                        <span class="participant-name">${participant2Name}</span>
-                        <span class="vote-count">0</span>
-                    </div>
-                    <div class="match-info">
-                        <p style="color: #888;">⏳ Match not ready</p>
-                    </div>
-                `;
-            }
-            
-            return matchDiv;
-        }
+  function matchHTML(m){
+    const left = Math.max(0, (m.endTime*1000) - Date.now());
+    return `
+      <div class="match card">
+        <div class="split"><div class="pill">Round ${m.round} • Match ${m.match}</div><div class="timer">${left? ('⏱ '+fmtTime(left)) : (m.finished? 'Finished' : 'Pending')}</div></div>
+        ${rowHTML(m,1)}
+        <div class="connector"></div>
+        ${rowHTML(m,2)}
+      </div>`;
+  }
 
-        // Update match timer
-        function updateMatchTimer(roundNum, matchNum, endTime) {
-            const timerElement = document.getElementById(`timer-${roundNum}-${matchNum}`);
-            if (!timerElement) return;
-            
-            const updateTimer = () => {
-                const now = Math.floor(Date.now() / 1000);
-                const timeLeft = parseInt(endTime) - now;
-                
-                if (timeLeft <= 0) {
-                    timerElement.textContent = 'TIME UP';
-                    timerElement.style.color = '#ff6b6b';
-                    return;
-                }
-                
-                const hours = Math.floor(timeLeft / 3600);
-                const minutes = Math.floor((timeLeft % 3600) / 60);
-                const seconds = timeLeft % 60;
-                
-                timerElement.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            };
-            
-            updateTimer();
-            setInterval(updateTimer, 1000);
-        }
+  function colHTML(matches){
+    return `<div class="col">${matches.map(matchHTML).join('')}</div>`
+  }
 
-        // Vote function
-        async function vote(roundNum, matchNum, participantId) {
-            if (!signer || !contract) {
-                showNotification('Please connect your wallet first', 'error');
-                return;
-            }
-            
-            try {
-                showNotification('Processing vote...', 'info');
-                
-                const voteValue = ethers.utils.parseEther(VOTE_COST);
-                const tx = await contract.vote(roundNum, matchNum, participantId, {
-                    value: voteValue,
-                    gasLimit: 300000
-                });
-                
-                showNotification('Vote submitted! Waiting for confirmation...');
-                await tx.wait();
-                
-                showNotification('Vote confirmed successfully!');
-                
-                // Refresh the bracket
-                await loadTournamentData();
-                
-            } catch (error) {
-                console.error('Vote error:', error);
-                if (error.message.includes('user rejected')) {
-                    showNotification('Transaction cancelled by user', 'error');
-                } else if (error.message.includes('insufficient funds')) {
-                    showNotification('Insufficient MON balance', 'error');
-                } else {
-                    showNotification(`Vote failed: ${error.message}`, 'error');
-                }
-            }
-        }
+  function renderBracket({state, r1, r2, r3}){
+    const root = document.getElementById('bracket');
+    root.innerHTML = ''+
+      colHTML([r1[0], r1[1]].filter(Boolean))+
+      colHTML([r2[0]].filter(Boolean))+
+      colHTML([r3[0]].filter(Boolean))+
+      colHTML([r2[1]].filter(Boolean))+
+      colHTML([r1[2], r1[3]].filter(Boolean));
+  }
 
-        // Start tournament (admin only)
-        async function startTournament() {
-            if (!signer || !contract || !isOwner) {
-                showNotification('Only owner can start tournament', 'error');
-                return;
-            }
-            
-            try {
-                showNotification('Starting tournament...', 'info');
-                
-                const tx = await contract.startTournament({
-                    gasLimit: 500000
-                });
-                
-                showNotification('Tournament start submitted! Waiting for confirmation...');
-                await tx.wait();
-                
-                showNotification('Tournament started successfully!');
-                await loadTournamentData();
-                
-            } catch (error) {
-                console.error('Start tournament error:', error);
-                showNotification(`Failed to start tournament: ${error.message}`, 'error');
-            }
-        }
+  // ====== Button hooks ======
+  window.handleVote = async (roundNum, matchNum, participantId) => {
+    const el = document.getElementById(`qty-${roundNum}-${matchNum}-${participantId}`);
+    const qty = Math.max(1, Number(el?.value||1));
+    if(!confirm(`Confirm vote ${qty}x for participant ${participantId}? Total ${(qty*VOTE_COST).toFixed(2)} MON`)) return;
+    try{ await vote(roundNum, matchNum, participantId, qty); }
+    catch(e){ alert(e.message||e); }
+  }
 
-        // Force finish expired matches (admin only)
-        async function forceFinishExpiredMatches() {
-            if (!signer || !contract || !isOwner) {
-                showNotification('Only owner can force finish matches', 'error');
-                return;
-            }
-            
-            try {
-                showNotification('Force finishing expired matches...', 'info');
-                
-                const tx = await contract.forceFinishExpiredMatches({
-                    gasLimit: 500000
-                });
-                
-                showNotification('Force finish submitted! Waiting for confirmation...');
-                await tx.wait();
-                
-                showNotification('Expired matches finished successfully!');
-                await loadTournamentData();
-                
-            } catch (error) {
-                console.error('Force finish error:', error);
-                showNotification(`Failed to force finish: ${error.message}`, 'error');
-            }
-        }
+  document.getElementById('startBtn').onclick = async ()=>{ try{ await startTournament(); }catch(e){ alert(e.message||e) } };
+  document.getElementById('forceBtn').onclick = async ()=>{ try{ await forceFinish(); }catch(e){ alert(e.message||e) } };
+  document.getElementById('finishBtn').onclick = async ()=>{
+    const r = Number(document.getElementById('roundInput').value||1);
+    const m = Number(document.getElementById('matchInput').value||1);
+    try{ await finishMatch(r,m); }catch(e){ alert(e.message||e) }
+  };
 
-        // Update all timers
-        function updateTimers() {
-            const timers = document.querySelectorAll('.timer[id^="timer-"]');
-            timers.forEach(timer => {
-                if (timer.textContent.includes(':')) {
-                    const parts = timer.id.split('-');
-                    const roundNum = parts[1];
-                    const matchNum = parts[2];
-                    // Timer will be updated by individual match timer functions
-                }
-            });
-        }
-
-        // Show notification
-        function showNotification(message, type = 'success') {
-            const notification = document.getElementById('notification');
-            notification.textContent = message;
-            notification.className = `notification ${type}`;
-            notification.classList.add('show');
-            
-            setTimeout(() => {
-                notification.classList.remove('show');
-            }, 5000);
-        }
-
-        // Listen for contract events
-        function setupContractEventListeners() {
-            if (!contract) return;
-            
-            // Listen for vote events
-            contract.on('VoteCast', (voter, round, matchIndex, participant, amount, event) => {
-                showNotification(`New vote cast in Round ${parseInt(round) + 1}, Match ${parseInt(matchIndex) + 1}!`);
-                setTimeout(loadTournamentData, 2000);
-            });
-            
-            // Listen for match finished events
-            contract.on('MatchFinished', (round, matchIndex, winner, event) => {
-                showNotification(`Match finished! Round ${parseInt(round) + 1}, Match ${parseInt(matchIndex) + 1}`);
-                setTimeout(loadTournamentData, 2000);
-            });
-            
-            // Listen for round finished events
-            contract.on('RoundFinished', (round, event) => {
-                showNotification(`Round ${parseInt(round) + 1} completed! Moving to next round...`);
-                setTimeout(loadTournamentData, 3000);
-            });
-            
-            // Listen for tournament finished events
-            contract.on('TournamentFinished', (winner, event) => {
-                showNotification(`🏆 Tournament finished! Winner announced!`);
-                setTimeout(loadTournamentData, 2000);
-            });
-        }
-
-        // Handle account changes
-        if (typeof window.ethereum !== 'undefined') {
-            window.ethereum.on('accountsChanged', (accounts) => {
-                if (accounts.length === 0) {
-                    // User disconnected
-                    location.reload();
-                } else if (accounts[0] !== userAccount) {
-                    // User switched accounts
-                    location.reload();
-                }
-            });
-            
-            window.ethereum.on('chainChanged', (chainId) => {
-                if (parseInt(chainId) !== CHAIN_ID) {
-                    showNotification('Please switch to Monad Testnet', 'error');
-                }
-            });
-        }
-
-        // Initialize the app when page loads
-        document.addEventListener('DOMContentLoaded', init);
-
-    </script>
+  // Polling loop for real-time-ish updates
+  refresh();
+  setInterval(refresh, 10_000); // every 10s
+  </script>
 </body>
 </html>
