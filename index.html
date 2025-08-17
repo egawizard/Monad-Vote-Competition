@@ -17,7 +17,6 @@
   <script>
     const CONTRACT = "0xa10FC3954BC82F93dD6c19EBAB78289c912EA8d1";
     const TREASURY = "0x6c2AA81b02a940c04A570aFFe7a413ca54C625cf";
-    const RPC_HTTP = "https://testnet-rpc.monad.xyz";
 
     let provider, signer, contract, account;
     let owner;
@@ -29,16 +28,7 @@
       {"inputs":[{"internalType":"uint256","name":"roundNum","type":"uint256"}],"name":"forceFinishExpiredMatches","outputs":[],"stateMutability":"nonpayable","type":"function"}
     ];
 
-    const participants = [
-      "LUMITERRA",
-      "KURU EXCHANGE",
-      "KIZZY MOBILE",
-      "CRYSTAL",
-      "CULT",
-      "aPriori",
-      "Magma",
-      "O.LAB"
-    ];
+    const participants = ["LUMITERRA","KURU EXCHANGE","KIZZY MOBILE","CRYSTAL","CULT","aPriori","Magma","O.LAB"];
 
     async function connectWallet() {
       if (!window.ethereum) return alert("Please install MetaMask");
@@ -52,12 +42,13 @@
     }
 
     async function startTournamentUI() {
-      const round = 1; // Round 1
-      const duration = 86400; // 24 hours in seconds
+      const round = 1;
+      const duration = 86400; // 24 hours
       try {
-        const tx = await contract.startTournament(round, duration);
+        const gasEstimate = await contract.estimateGas.startTournament(round, duration);
+        const tx = await contract.startTournament(round, duration, { gasLimit: gasEstimate.mul(2) });
         await tx.wait();
-        alert("Round 1 started for all 4 matches (24 hours)!");
+        alert("Round 1 started: all 4 matches running concurrently for 24h!");
       } catch (e) { alert("Error: " + e.message); }
     }
 
@@ -65,7 +56,8 @@
       const round = prompt("Round number:");
       const match = prompt("Match number:");
       try {
-        const tx = await contract.finishMatch(round, match);
+        const gasEstimate = await contract.estimateGas.finishMatch(round, match);
+        const tx = await contract.finishMatch(round, match, { gasLimit: gasEstimate.mul(2) });
         await tx.wait();
         alert("Match finished!");
       } catch (e) { alert("Error: " + e.message); }
@@ -74,7 +66,8 @@
     async function forceFinishExpiredMatchesUI() {
       const round = prompt("Round number:");
       try {
-        const tx = await contract.forceFinishExpiredMatches(round);
+        const gasEstimate = await contract.estimateGas.forceFinishExpiredMatches(round);
+        const tx = await contract.forceFinishExpiredMatches(round, { gasLimit: gasEstimate.mul(2) });
         await tx.wait();
         alert("Expired matches finished!");
       } catch (e) { alert("Error: " + e.message); }
@@ -85,36 +78,18 @@
         <button onclick="connectWallet()" class='bg-blue-600 px-4 py-2 rounded mb-4'>Connect Wallet</button>
         <div class='grid grid-cols-4 gap-4 w-full'>
           <div class='flex flex-col justify-around'>
-            <div class='p-2 border rounded'>${participants[0]} <button class='ml-2 bg-blue-600 px-2 py-1 rounded'>Vote</button></div>
-            <div class='p-2 border rounded'>${participants[1]} <button class='ml-2 bg-blue-600 px-2 py-1 rounded'>Vote</button></div>
-            <div class='p-2 border rounded'>${participants[2]} <button class='ml-2 bg-blue-600 px-2 py-1 rounded'>Vote</button></div>
-            <div class='p-2 border rounded'>${participants[3]} <button class='ml-2 bg-blue-600 px-2 py-1 rounded'>Vote</button></div>
+            ${participants.slice(0,4).map(p => `<div class='p-2 border rounded'>${p} <button class='ml-2 bg-blue-600 px-2 py-1 rounded'>Vote</button></div>`).join('')}
           </div>
-          <div class='flex flex-col justify-around'>
-            <div class='p-2 border rounded'>Winner QF1</div>
-            <div class='p-2 border rounded'>Winner QF2</div>
-          </div>
-          <div class='flex flex-col justify-around'>
-            <div class='p-2 border rounded'>Winner SF1</div>
-          </div>
-          <div class='flex flex-col justify-around'>
-            <div class='p-2 border rounded'>🏆 Champion</div>
-          </div>
+          <div class='flex flex-col justify-around'><div class='p-2 border rounded'>Winner QF1</div><div class='p-2 border rounded'>Winner QF2</div></div>
+          <div class='flex flex-col justify-around'><div class='p-2 border rounded'>Winner SF1</div></div>
+          <div class='flex flex-col justify-around'><div class='p-2 border rounded'>🏆 Champion</div></div>
         </div>
         <div class='grid grid-cols-4 gap-4 w-full mt-8'>
           <div class='flex flex-col justify-around'>
-            <div class='p-2 border rounded'>${participants[4]} <button class='ml-2 bg-blue-600 px-2 py-1 rounded'>Vote</button></div>
-            <div class='p-2 border rounded'>${participants[5]} <button class='ml-2 bg-blue-600 px-2 py-1 rounded'>Vote</button></div>
-            <div class='p-2 border rounded'>${participants[6]} <button class='ml-2 bg-blue-600 px-2 py-1 rounded'>Vote</button></div>
-            <div class='p-2 border rounded'>${participants[7]} <button class='ml-2 bg-blue-600 px-2 py-1 rounded'>Vote</button></div>
+            ${participants.slice(4).map(p => `<div class='p-2 border rounded'>${p} <button class='ml-2 bg-blue-600 px-2 py-1 rounded'>Vote</button></div>`).join('')}
           </div>
-          <div class='flex flex-col justify-around'>
-            <div class='p-2 border rounded'>Winner QF3</div>
-            <div class='p-2 border rounded'>Winner QF4</div>
-          </div>
-          <div class='flex flex-col justify-around'>
-            <div class='p-2 border rounded'>Winner SF2</div>
-          </div>
+          <div class='flex flex-col justify-around'><div class='p-2 border rounded'>Winner QF3</div><div class='p-2 border rounded'>Winner QF4</div></div>
+          <div class='flex flex-col justify-around'><div class='p-2 border rounded'>Winner SF2</div></div>
         </div>
       `;
     }
