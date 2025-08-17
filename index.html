@@ -1098,22 +1098,79 @@
                 return;
             }
             
+            if (!account) {
+                showStatus('Please connect your wallet first!', 'error');
+                return;
+            }
+            
             try {
+                showStatus('Checking prerequisites...', 'info');
+                
+                // Check network
+                const chainId = await web3.eth.getChainId();
+                if (chainId !== 10143) {
+                    showStatus('Please switch to Monad Testnet (Chain ID: 10143)', 'error');
+                    return;
+                }
+                
+                // Check balance
+                const balance = await web3.eth.getBalance(account);
+                const balanceInEther = parseFloat(web3.utils.fromWei(balance, 'ether'));
+                if (balanceInEther < 0.1) {
+                    showStatus('Insufficient balance. You need at least 0.1 MON to vote.', 'error');
+                    return;
+                }
+                
                 showStatus('Processing vote...', 'info');
                 
                 const roundNum = getCurrentRoundNumber(currentVoteData.round);
                 const voteValue = web3.utils.toWei('0.1', 'ether');
                 
-                // Estimate gas first
-                const gasEstimate = await contract.methods.vote(
+                console.log('Vote parameters:', {
                     roundNum,
-                    currentVoteData.matchIndex,
-                    currentVoteData.participantId
-                ).estimateGas({
-                    from: account,
-                    value: voteValue
+                    matchIndex: currentVoteData.matchIndex,
+                    participantId: currentVoteData.participantId,
+                    voteValue,
+                    from: account
                 });
                 
+                // Check if tournament is active first
+                try {
+                    const tournamentState = await contract.methods.getTournamentState().call();
+                    console.log('Tournament state:', tournamentState);
+                    
+                    if (parseInt(tournamentState.tournamentState) === 0) {
+                        showStatus('Tournament has not started yet. Please wait for the owner to start the tournament.', 'error');
+                        return;
+                    }
+                    
+                    if (parseInt(tournamentState.tournamentState) === 2) {
+                        showStatus('Tournament has already finished!', 'error');
+                        return;
+                    }
+                } catch (stateError) {
+                    console.log('Could not check tournament state:', stateError);
+                }
+                
+                // Try to estimate gas first
+                let gasEstimate;
+                try {
+                    gasEstimate = await contract.methods.vote(
+                        roundNum,
+                        currentVoteData.matchIndex,
+                        currentVoteData.participantId
+                    ).estimateGas({
+                        from: account,
+                        value: voteValue
+                    });
+                    console.log('Gas estimate:', gasEstimate);
+                } catch (gasError) {
+                    console.error('Gas estimation failed:', gasError);
+                    showStatus('Transaction would fail: ' + gasError.message, 'error');
+                    return;
+                }
+                
+                // Send transaction
                 const tx = await contract.methods.vote(
                     roundNum,
                     currentVoteData.matchIndex,
@@ -1121,17 +1178,40 @@
                 ).send({
                     from: account,
                     value: voteValue,
-                    gas: Math.floor(gasEstimate * 1.1) // Add 10% buffer
+                    gas: Math.floor(gasEstimate * 1.2), // Add 20% buffer
+                    gasPrice: web3.utils.toWei('20', 'gwei') // Set explicit gas price
                 });
                 
                 showStatus(`Vote cast successfully! Transaction: ${tx.transactionHash}`, 'success');
+                console.log('Transaction successful:', tx);
+                
                 closeVoteModal();
                 updateBalance();
                 updateTournament();
                 
             } catch (error) {
                 console.error('Error casting vote:', error);
-                showStatus('Failed to cast vote: ' + error.message, 'error');
+                
+                let errorMessage = 'Failed to cast vote: ';
+                if (error.message.includes('execution reverted')) {
+                    if (error.message.includes('Tournament not active')) {
+                        errorMessage += 'Tournament is not currently active';
+                    } else if (error.message.includes('Match not active')) {
+                        errorMessage += 'This match is not currently accepting votes';
+                    } else if (error.message.includes('insufficient funds')) {
+                        errorMessage += 'Insufficient funds for transaction';
+                    } else {
+                        errorMessage += 'Smart contract rejected the transaction';
+                    }
+                } else if (error.code === 4001) {
+                    errorMessage += 'Transaction rejected by user';
+                } else if (error.message.includes('network')) {
+                    errorMessage += 'Network connection error';
+                } else {
+                    errorMessage += error.message;
+                }
+                
+                showStatus(errorMessage, 'error');
             }
         }
 
@@ -1374,19 +1454,73 @@
             }
             
             try {
+                console.log('=== TOURNAMENT DEBUG INFO ===');
+                
                 const state = await contract.methods.getTournamentState().call();
                 const participantCount = await contract.methods.getParticipantCount().call();
                 const roundCount = await contract.methods.getRoundCount().call();
-                
-                showStatus(`Status: ${getTournamentStatusText(state.tournamentState)}, Round: ${parseInt(state.round) + 1}/${state.totalRounds}, Participants: ${participantCount}`, 'info');
+                const currentRound = await contract.methods.currentRound().call();
                 
                 console.log('Tournament State:', {
                     state: state.tournamentState,
                     currentRound: state.round,
                     totalRounds: state.totalRounds,
                     participantCount: participantCount,
-                    roundCount: roundCount
+                    roundCount: roundCount,
+                    currentRoundDirect: currentRound
                 });
+                
+                // Check each participant
+                console.log('=== PARTICIPANTS ===');
+                for (let i = 0; i < participantCount; i++) {
+                    try {
+                        const participant = await contract.methods.getParticipant(i).call();
+                        console.log(`Participant ${i}:`, participant);
+                    } catch (e) {
+                        console.log(`Participant ${i}: Error -`, e.message);
+                    }
+                }
+                
+                // Check current matches
+                console.log('=== CURRENT MATCHES ===');
+                try {
+                    const currentMatches = await contract.methods.getCurrentMatches().call();
+                    console.log('Current matches:', currentMatches);
+                    
+                    for (let i = 0; i < currentMatches.length; i++) {
+                        try {
+                            const match = await contract.methods.getMatch(currentRound, i).call();
+                            console.log(`Match ${i}:`, match);
+                        } catch (e) {
+                            console.log(`Match ${i}: Error -`, e.message);
+                        }
+                    }
+                } catch (e) {
+                    console.log('Error getting current matches:', e.message);
+                }
+                
+                // Check contract owner
+                try {
+                    const owner = await contract.methods.owner().call();
+                    console.log('Contract owner:', owner);
+                    console.log('Current account:', account);
+                    console.log('Is owner?', owner.toLowerCase() === account?.toLowerCase());
+                } catch (e) {
+                    console.log('Error getting owner:', e.message);
+                }
+                
+                // Check vote cost and round duration
+                try {
+                    const voteCost = await contract.methods.VOTE_COST().call();
+                    const roundDuration = await contract.methods.ROUND_DURATION().call();
+                    console.log('Vote cost:', web3.utils.fromWei(voteCost, 'ether'), 'ETH');
+                    console.log('Round duration:', roundDuration, 'seconds');
+                } catch (e) {
+                    console.log('Error getting constants:', e.message);
+                }
+                
+                showStatus(`Status: ${getTournamentStatusText(state.tournamentState)}, Round: ${parseInt(state.round) + 1}/${state.totalRounds}, Participants: ${participantCount}`, 'info');
+                
             } catch (error) {
                 console.error('Error checking tournament status:', error);
                 showStatus('Failed to check tournament status: ' + error.message, 'error');
