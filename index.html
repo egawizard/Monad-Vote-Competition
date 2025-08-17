@@ -351,6 +351,14 @@
             </div>
         </div>
 
+        <!-- Debug section for troubleshooting -->
+        <div class="wallet-section">
+            <div style="text-align: center;">
+                <button class="btn" onclick="debugContract()" style="margin: 5px;">Debug Contract</button>
+                <button class="btn" onclick="testContractConnection()" style="margin: 5px;">Test Connection</button>
+            </div>
+        </div>
+
         <div class="bracket-container">
             <div class="bracket" id="bracket">
                 <!-- Bracket will be generated here -->
@@ -957,27 +965,75 @@
                 const roundNum = getCurrentRoundNumber(currentVoteData.round);
                 const voteValue = web3.utils.toWei('0.1', 'ether');
                 
+                console.log('Vote parameters:', {
+                    roundNum,
+                    matchIndex: currentVoteData.matchIndex,
+                    participantId: currentVoteData.participantId,
+                    participantName: currentVoteData.participantName,
+                    voteValue: voteValue
+                });
+                
+                // Check network
+                const networkId = await web3.eth.net.getId();
+                console.log('Current network ID:', networkId);
+                if (networkId !== 10143) {
+                    showStatus('Please switch to Monad Testnet (Chain ID: 10143)', 'error');
+                    return;
+                }
+                
                 // Check balance first
                 const balance = await web3.eth.getBalance(account);
                 const balanceInEther = parseFloat(web3.utils.fromWei(balance, 'ether'));
+                console.log('Account balance:', balanceInEther, 'MON');
                 
                 if (balanceInEther < 0.11) { // Need slightly more than 0.1 for gas
-                    showStatus('Insufficient balance. You need at least 0.11 MON (0.1 for vote + gas)', 'error');
+                    showStatus(`Insufficient balance. You have ${balanceInEther.toFixed(4)} MON but need at least 0.11 MON`, 'error');
                     return;
                 }
 
-                // Estimate gas first
-                const gasEstimate = await contract.methods.vote(
-                    roundNum,
-                    currentVoteData.matchIndex,
-                    currentVoteData.participantId
-                ).estimateGas({
-                    from: account,
-                    value: voteValue
-                });
+                // Check if contract is deployed
+                const contractCode = await web3.eth.getCode(CONTRACT_ADDRESS);
+                if (contractCode === '0x' || contractCode === '0x0') {
+                    showStatus('Contract not found at address. Please check contract deployment.', 'error');
+                    return;
+                }
 
-                console.log('Gas estimate:', gasEstimate);
+                // Try to get tournament state first
+                let tournamentState;
+                try {
+                    tournamentState = await contract.methods.getTournamentState().call();
+                    console.log('Tournament state:', tournamentState);
+                } catch (stateError) {
+                    console.error('Error getting tournament state:', stateError);
+                    showStatus('Cannot read tournament state. Contract may not be properly initialized.', 'error');
+                    return;
+                }
 
+                // Check if tournament is active
+                if (parseInt(tournamentState.tournamentState) !== 1) {
+                    showStatus('Tournament is not active. Current state: ' + getTournamentStatusText(tournamentState.tournamentState), 'error');
+                    return;
+                }
+
+                // Estimate gas with try-catch
+                let gasEstimate;
+                try {
+                    gasEstimate = await contract.methods.vote(
+                        roundNum,
+                        currentVoteData.matchIndex,
+                        currentVoteData.participantId
+                    ).estimateGas({
+                        from: account,
+                        value: voteValue
+                    });
+                    console.log('Gas estimate:', gasEstimate);
+                } catch (gasError) {
+                    console.error('Gas estimation failed:', gasError);
+                    showStatus('Transaction would fail: ' + (gasError.message || 'Unknown error'), 'error');
+                    return;
+                }
+
+                // Send transaction
                 const tx = await contract.methods.vote(
                     roundNum,
                     currentVoteData.matchIndex,
@@ -985,30 +1041,40 @@
                 ).send({
                     from: account,
                     value: voteValue,
-                    gas: Math.floor(gasEstimate * 1.2), // Add 20% buffer
-                    gasPrice: web3.utils.toWei('1', 'gwei') // Set reasonable gas price for Monad
+                    gas: Math.floor(gasEstimate * 1.3), // Add 30% buffer
+                    gasPrice: web3.utils.toWei('2', 'gwei') // Slightly higher gas price for Monad
                 });
                 
                 console.log('Transaction hash:', tx.transactionHash);
-                showStatus('Vote cast successfully! Transaction: ' + tx.transactionHash, 'success');
+                showStatus(`Vote cast successfully! Transaction: ${tx.transactionHash}`, 'success');
                 closeVoteModal();
                 
                 // Wait a bit before updating to allow blockchain to process
                 setTimeout(() => {
                     updateBalance();
                     updateTournament();
-                }, 2000);
+                }, 3000);
                 
             } catch (error) {
                 console.error('Error casting vote:', error);
                 let errorMessage = 'Failed to cast vote: ';
                 
-                if (error.message.includes('User denied')) {
+                if (error.message.includes('User denied') || error.code === 4001) {
                     errorMessage += 'Transaction was cancelled by user.';
                 } else if (error.message.includes('insufficient funds')) {
                     errorMessage += 'Insufficient funds for transaction.';
                 } else if (error.message.includes('execution reverted')) {
-                    errorMessage += 'Transaction reverted. Match may be finished or invalid.';
+                    if (error.message.includes('Match not active')) {
+                        errorMessage += 'This match is not currently active for voting.';
+                    } else if (error.message.includes('Invalid participant')) {
+                        errorMessage += 'Invalid participant selected.';
+                    } else if (error.message.includes('Tournament not active')) {
+                        errorMessage += 'Tournament is not currently active.';
+                    } else {
+                        errorMessage += 'Transaction reverted. Match may be finished or invalid.';
+                    }
+                } else if (error.message.includes('network')) {
+                    errorMessage += 'Network error. Please check your connection to Monad testnet.';
                 } else {
                     errorMessage += error.message;
                 }
@@ -1029,6 +1095,8 @@
         async function updateTournament() {
             if (!contract) {
                 console.log('Contract not initialized, using demo mode');
+                document.getElementById('currentRound').textContent = 'Demo Mode';
+                document.getElementById('tournamentStatus').textContent = 'Contract Not Connected';
                 simulateTournamentProgress();
                 return;
             }
@@ -1036,27 +1104,39 @@
             try {
                 // Check if contract is properly deployed
                 const code = await web3.eth.getCode(CONTRACT_ADDRESS);
-                if (code === '0x') {
-                    console.log('Contract not deployed, using demo mode');
+                if (code === '0x' || code === '0x0') {
+                    console.log('Contract not deployed at address:', CONTRACT_ADDRESS);
+                    document.getElementById('currentRound').textContent = 'Contract Not Found';
+                    document.getElementById('tournamentStatus').textContent = 'Contract Not Deployed';
                     simulateTournamentProgress();
                     return;
                 }
 
+                console.log('Updating tournament data from contract...');
                 const state = await contract.methods.getTournamentState().call();
+                console.log('Tournament state received:', state);
                 
                 document.getElementById('currentRound').textContent = getRoundName(state.round);
                 document.getElementById('tournamentStatus').textContent = getTournamentStatusText(state.tournamentState);
                 
+                // If tournament is not started, show setup message
+                if (parseInt(state.tournamentState) === 0) {
+                    showStatus('Tournament not started yet. Contract owner needs to start the tournament.', 'info');
+                    return;
+                }
+                
                 // Update current round display
                 const currentRoundNum = parseInt(state.round);
+                console.log('Current round:', currentRoundNum);
+                
                 if (currentRoundNum >= 0 && currentRoundNum <= 2) {
-                    const roundNames = ['Quarterfinals', 'Semifinals', 'Final'];
                     const matchCount = currentRoundNum === 0 ? 4 : (currentRoundNum === 1 ? 2 : 1);
                     
                     // Update match data for current round
                     for (let i = 0; i < matchCount; i++) {
                         try {
                             const match = await contract.methods.getMatch(currentRoundNum, i).call();
+                            console.log(`Match ${i} data:`, match);
                             updateMatchDisplay(currentRoundNum, i, match);
                         } catch (error) {
                             console.error(`Error getting match ${i} for round ${currentRoundNum}:`, error);
@@ -1066,6 +1146,16 @@
                 
             } catch (error) {
                 console.error('Error updating tournament:', error);
+                document.getElementById('currentRound').textContent = 'Connection Error';
+                document.getElementById('tournamentStatus').textContent = 'Cannot Connect to Contract';
+                
+                // Show specific error message
+                if (error.message.includes('network')) {
+                    showStatus('Network error: Please check your connection to Monad testnet', 'error');
+                } else {
+                    showStatus('Error connecting to contract: ' + error.message, 'error');
+                }
+                
                 // Fallback to simulation if contract calls fail
                 simulateTournamentProgress();
             }
@@ -1367,6 +1457,98 @@
 
         // Call this periodically to finish expired matches
         setInterval(forceFinishExpiredMatches, 60000); // Every minute
+
+        // Debug functions
+        async function debugContract() {
+            console.log('=== CONTRACT DEBUG INFO ===');
+            console.log('Contract Address:', CONTRACT_ADDRESS);
+            console.log('Account:', account);
+            console.log('Web3 initialized:', !!web3);
+            console.log('Contract initialized:', !!contract);
+            
+            if (web3) {
+                try {
+                    const networkId = await web3.eth.net.getId();
+                    console.log('Network ID:', networkId);
+                    
+                    const balance = await web3.eth.getBalance(account || '0x0');
+                    console.log('Balance:', web3.utils.fromWei(balance, 'ether'), 'MON');
+                    
+                    const code = await web3.eth.getCode(CONTRACT_ADDRESS);
+                    console.log('Contract code exists:', code !== '0x' && code !== '0x0');
+                    console.log('Contract code length:', code.length);
+                    
+                    if (contract && account) {
+                        const state = await contract.methods.getTournamentState().call();
+                        console.log('Tournament State:', state);
+                        
+                        const participantCount = await contract.methods.getParticipantCount().call();
+                        console.log('Participant Count:', participantCount);
+                        
+                        const roundCount = await contract.methods.getRoundCount().call();
+                        console.log('Round Count:', roundCount);
+                        
+                        showStatus('Debug info logged to console', 'success');
+                    } else {
+                        showStatus('Contract or account not available', 'error');
+                    }
+                } catch (error) {
+                    console.error('Debug error:', error);
+                    showStatus('Debug failed: ' + error.message, 'error');
+                }
+            }
+        }
+
+        async function testContractConnection() {
+            console.log('=== TESTING CONTRACT CONNECTION ===');
+            
+            if (!web3) {
+                showStatus('Web3 not initialized', 'error');
+                return;
+            }
+            
+            if (!account) {
+                showStatus('Please connect wallet first', 'error');
+                return;
+            }
+            
+            try {
+                // Test network
+                const networkId = await web3.eth.net.getId();
+                if (networkId !== 10143) {
+                    showStatus(`Wrong network. Connected to ${networkId}, need 10143 (Monad)`, 'error');
+                    return;
+                }
+                
+                // Test contract exists
+                const code = await web3.eth.getCode(CONTRACT_ADDRESS);
+                if (code === '0x' || code === '0x0') {
+                    showStatus('Contract not deployed at address: ' + CONTRACT_ADDRESS, 'error');
+                    return;
+                }
+                
+                // Test contract call
+                const state = await contract.methods.getTournamentState().call();
+                console.log('Contract call successful:', state);
+                
+                // Test if tournament is started
+                if (parseInt(state.tournamentState) === 0) {
+                    showStatus('Contract connected but tournament not started', 'info');
+                } else if (parseInt(state.tournamentState) === 1) {
+                    showStatus('Contract connected and tournament is active!', 'success');
+                } else {
+                    showStatus('Contract connected but tournament is finished', 'info');
+                }
+                
+            } catch (error) {
+                console.error('Connection test failed:', error);
+                showStatus('Connection test failed: ' + error.message, 'error');
+            }
+        }
+
+        // Expose debug functions to global scope
+        window.debugContract = debugContract;
+        window.testContractConnection = testContractConnection;
     </script>
 </body>
 </html>inputs": [
