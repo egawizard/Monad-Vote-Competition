@@ -98,36 +98,44 @@
         .bracket-container {
             display: flex;
             justify-content: center;
-            gap: 50px;
-            min-height: 600px;
+            gap: 40px;
+            min-height: 500px;
             overflow-x: auto;
             padding: 20px 0;
+            max-width: 100%;
         }
 
         .round {
             display: flex;
             flex-direction: column;
-            justify-content: space-around;
+            justify-content: center;
             min-width: 280px;
+            max-width: 320px;
         }
 
         .round h3 {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
             color: #ffd700;
-            font-size: 1.5rem;
+            font-size: 1.3rem;
             text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        .matches-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            justify-content: center;
         }
 
         .match {
             background: linear-gradient(145deg, #2d2d2d, #1a1a1a);
-            border-radius: 15px;
-            padding: 20px;
-            margin: 15px 0;
+            border-radius: 12px;
+            padding: 15px;
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
             border: 2px solid rgba(255, 215, 0, 0.2);
             transition: all 0.3s ease;
-            min-height: 160px;
+            min-height: 120px;
         }
 
         .match:hover {
@@ -139,13 +147,13 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px;
-            margin: 8px 0;
+            padding: 10px 12px;
+            margin: 5px 0;
             background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
+            border-radius: 8px;
             transition: all 0.3s ease;
             border: 2px solid transparent;
-            min-height: 50px;
+            min-height: 45px;
         }
 
         .participant:hover {
@@ -160,23 +168,24 @@
 
         .participant-name {
             font-weight: bold;
-            font-size: 1.1rem;
+            font-size: 1rem;
             flex-grow: 1;
         }
 
         .participant-actions {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
         }
 
         .votes {
             background: rgba(255, 215, 0, 0.2);
-            padding: 8px 15px;
-            border-radius: 20px;
+            padding: 6px 12px;
+            border-radius: 15px;
             font-weight: bold;
             color: #ffd700;
-            min-width: 80px;
+            font-size: 0.9rem;
+            min-width: 70px;
             text-align: center;
         }
 
@@ -184,10 +193,11 @@
             background: linear-gradient(45deg, #4CAF50, #45a049);
             color: white;
             border: none;
-            padding: 8px 16px;
-            border-radius: 5px;
+            padding: 6px 12px;
+            border-radius: 4px;
             cursor: pointer;
             font-weight: bold;
+            font-size: 0.85rem;
             transition: all 0.3s ease;
             white-space: nowrap;
         }
@@ -207,11 +217,11 @@
             text-align: center;
             color: #ff6b6b;
             font-weight: bold;
-            margin-top: 15px;
-            padding: 10px;
+            margin-top: 10px;
+            padding: 8px;
             background: rgba(255, 107, 107, 0.1);
-            border-radius: 8px;
-            font-size: 0.9rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
         }
 
         .admin-panel {
@@ -294,9 +304,29 @@
             text-decoration: underline;
         }
 
+        .tournament-placeholder {
+            text-align: center; 
+            width: 100%; 
+            padding: 50px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .tournament-placeholder h3 {
+            color: #ffd700;
+            font-size: 2rem;
+            margin-bottom: 15px;
+        }
+
+        .tournament-placeholder p {
+            color: #ccc;
+            font-size: 1.1rem;
+        }
+
         @media (max-width: 1200px) {
             .bracket-container {
-                gap: 30px;
+                gap: 25px;
             }
             .round {
                 min-width: 250px;
@@ -314,7 +344,7 @@
             }
             .round {
                 width: 100%;
-                max-width: 300px;
+                max-width: 320px;
             }
         }
     </style>
@@ -637,13 +667,17 @@
                 }
 
                 if (state === 1) { // Tournament in progress
-                    await loadBracket(readContract, currentRound, totalRounds);
+                    await loadBracket(readContract);
                 } else if (state === 0) {
-                    document.getElementById('bracketContainer').innerHTML = 
-                        '<div style="text-align: center; width: 100%;"><h3>Tournament hasn\'t started yet</h3><p>Waiting for admin to start the tournament...</p></div>';
+                    document.getElementById('bracketContainer').innerHTML = `
+                        <div class="tournament-placeholder">
+                            <h3>Tournament hasn't started yet</h3>
+                            <p>Waiting for admin to start the tournament...</p>
+                        </div>
+                    `;
                     document.getElementById('countdownTimer').style.display = 'none';
                 } else {
-                    await loadBracket(readContract, currentRound, totalRounds);
+                    await loadBracket(readContract);
                     document.getElementById('countdownTimer').style.display = 'none';
                 }
 
@@ -749,56 +783,67 @@
             }
         }
 
-        async function loadBracket(contract, currentRound, totalRounds) {
+        async function loadBracket(contract) {
             const bracketContainer = document.getElementById('bracketContainer');
             bracketContainer.innerHTML = '';
 
-            // Calculate bracket structure for 8 participants
+            // Define clean bracket structure for 8 participants tournament
             const rounds = [
-                { name: 'Quarter Finals', matches: 4 },
-                { name: 'Semi Finals', matches: 2 },
-                { name: 'Final', matches: 1 }
+                { name: 'Quarter Finals', matches: 4, roundIndex: 0 },
+                { name: 'Semi Finals', matches: 2, roundIndex: 1 },
+                { name: 'Final', matches: 1, roundIndex: 2 }
             ];
 
-            for (let roundIndex = 0; roundIndex < rounds.length; roundIndex++) {
+            for (let i = 0; i < rounds.length; i++) {
+                const roundInfo = rounds[i];
                 const roundDiv = document.createElement('div');
                 roundDiv.className = 'round';
+                roundDiv.id = `round-${roundInfo.roundIndex}`;
                 
                 const roundTitle = document.createElement('h3');
-                roundTitle.textContent = rounds[roundIndex].name;
+                roundTitle.textContent = roundInfo.name;
                 roundDiv.appendChild(roundTitle);
 
-                // Load matches for this round
-                for (let matchIndex = 0; matchIndex < rounds[roundIndex].matches; matchIndex++) {
+                const matchesContainer = document.createElement('div');
+                matchesContainer.className = 'matches-container';
+
+                // Load matches for this specific round only
+                for (let matchIndex = 0; matchIndex < roundInfo.matches; matchIndex++) {
                     try {
-                        const matchData = await contract.getMatch(roundIndex, matchIndex);
-                        const matchDiv = createMatchElement(roundIndex, matchIndex, matchData);
-                        roundDiv.appendChild(matchDiv);
+                        const matchData = await contract.getMatch(roundInfo.roundIndex, matchIndex);
+                        const matchDiv = createMatchElement(roundInfo.roundIndex, matchIndex, matchData);
+                        matchesContainer.appendChild(matchDiv);
                     } catch (error) {
                         // Show placeholder for future matches
-                        const matchDiv = document.createElement('div');
-                        matchDiv.className = 'match';
-                        matchDiv.id = `match-${roundIndex}-${matchIndex}`;
-                        matchDiv.innerHTML = `
-                            <div class="participant">
-                                <span class="participant-name">TBD</span>
-                                <div class="participant-actions">
-                                    <span class="votes">0 votes</span>
-                                </div>
-                            </div>
-                            <div class="participant">
-                                <span class="participant-name">TBD</span>
-                                <div class="participant-actions">
-                                    <span class="votes">0 votes</span>
-                                </div>
-                            </div>
-                        `;
-                        roundDiv.appendChild(matchDiv);
+                        const matchDiv = createPlaceholderMatch(roundInfo.roundIndex, matchIndex);
+                        matchesContainer.appendChild(matchDiv);
                     }
                 }
 
+                roundDiv.appendChild(matchesContainer);
                 bracketContainer.appendChild(roundDiv);
             }
+        }
+
+        function createPlaceholderMatch(roundNum, matchNum) {
+            const matchDiv = document.createElement('div');
+            matchDiv.className = 'match';
+            matchDiv.id = `match-${roundNum}-${matchNum}`;
+            matchDiv.innerHTML = `
+                <div class="participant">
+                    <span class="participant-name">TBD</span>
+                    <div class="participant-actions">
+                        <span class="votes">0 votes</span>
+                    </div>
+                </div>
+                <div class="participant">
+                    <span class="participant-name">TBD</span>
+                    <div class="participant-actions">
+                        <span class="votes">0 votes</span>
+                    </div>
+                </div>
+            `;
+            return matchDiv;
         }
 
         function createMatchElement(roundNum, matchNum, matchData) {
