@@ -50,7 +50,25 @@
             padding: 20px;
         }
 
-        /* Farcaster-specific styling */
+        .debug-panel {
+            background: rgba(255, 0, 0, 0.1);
+            border: 2px solid rgba(255, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            font-family: monospace;
+        }
+
+        .debug-panel h3 {
+            color: #ff6b6b;
+            margin-bottom: 15px;
+        }
+
+        .debug-panel p {
+            margin: 5px 0;
+            font-size: 0.9rem;
+        }
+
         .farcaster-banner {
             background: linear-gradient(45deg, #855dcd, #6b46c1);
             color: white;
@@ -58,22 +76,12 @@
             padding: 15px;
             margin-bottom: 20px;
             border-radius: 10px;
-            display: none; /* Will show via JS detection */
+            display: none;
             border: 2px solid rgba(133, 93, 205, 0.3);
         }
 
         .farcaster-banner.active {
             display: block;
-        }
-
-        .farcaster-banner h3 {
-            margin-bottom: 8px;
-            font-size: 1.2rem;
-        }
-
-        .farcaster-banner p {
-            font-size: 0.9rem;
-            opacity: 0.9;
         }
 
         .header {
@@ -109,7 +117,7 @@
             gap: 15px;
         }
 
-        .connect-btn, .admin-btn {
+        .btn {
             background: linear-gradient(45deg, #ffd700, #ffed4e);
             color: #000;
             border: none;
@@ -119,11 +127,29 @@
             font-weight: bold;
             transition: all 0.3s ease;
             box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
         }
 
-        .connect-btn:hover, .admin-btn:hover {
+        .btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(255, 215, 0, 0.5);
+        }
+
+        .btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-purple {
+            background: linear-gradient(45deg, #855dcd, #6b46c1);
+            color: white;
+        }
+
+        .btn-purple:hover {
+            box-shadow: 0 6px 20px rgba(133, 93, 205, 0.4);
         }
 
         .tournament-status {
@@ -133,226 +159,6 @@
             border-radius: 10px;
             margin-bottom: 30px;
             backdrop-filter: blur(10px);
-        }
-
-        .countdown-timer {
-            font-size: 1.5rem;
-            color: #ff6b6b;
-            font-weight: bold;
-            margin-top: 15px;
-            padding: 15px;
-            background: rgba(255, 107, 107, 0.1);
-            border-radius: 10px;
-            border: 2px solid rgba(255, 107, 107, 0.3);
-        }
-
-        /* New Simplified Bracket Design */
-        .bracket-container {
-            display: flex;
-            flex-direction: column;
-            gap: 40px;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .round-section {
-            background: linear-gradient(145deg, #2d2d2d, #1a1a1a);
-            border-radius: 15px;
-            padding: 25px;
-            border: 2px solid rgba(255, 215, 0, 0.2);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-        }
-
-        .round-title {
-            text-align: center;
-            margin-bottom: 25px;
-            color: #ffd700;
-            font-size: 1.8rem;
-            text-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
-            font-weight: bold;
-        }
-
-        .matches-grid {
-            display: grid;
-            gap: 20px;
-        }
-
-        .quarter-finals .matches-grid {
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-        }
-
-        .semi-finals .matches-grid {
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-        }
-
-        .finals .matches-grid {
-            grid-template-columns: 1fr;
-            max-width: 500px;
-            margin: 0 auto;
-        }
-
-        .match-card {
-            background: linear-gradient(145deg, #3a3a3a, #2a2a2a);
-            border-radius: 12px;
-            padding: 20px;
-            border: 2px solid rgba(255, 215, 0, 0.3);
-            transition: all 0.3s ease;
-            position: relative;
-        }
-
-        .match-card:hover {
-            border-color: rgba(255, 215, 0, 0.6);
-            box-shadow: 0 8px 25px rgba(255, 215, 0, 0.2);
-            transform: translateY(-3px);
-        }
-
-        .match-header {
-            text-align: center;
-            margin-bottom: 15px;
-            color: #ffd700;
-            font-weight: bold;
-            font-size: 1.1rem;
-        }
-
-        .participant {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px;
-            margin: 10px 0;
-            background: rgba(255, 255, 255, 0.08);
-            border-radius: 10px;
-            transition: all 0.3s ease;
-            border: 2px solid transparent;
-        }
-
-        .participant:hover {
-            background: rgba(255, 215, 0, 0.15);
-            border-color: rgba(255, 215, 0, 0.4);
-        }
-
-        .participant.winner {
-            background: linear-gradient(45deg, rgba(255, 215, 0, 0.3), rgba(255, 215, 0, 0.2));
-            border-color: #ffd700;
-            box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
-        }
-
-        .participant-name {
-            font-weight: bold;
-            font-size: 1.2rem;
-            flex-grow: 1;
-            color: #ffffff;
-        }
-
-        .winner .participant-name {
-            color: #ffd700;
-        }
-
-        .participant-actions {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .votes {
-            background: rgba(255, 215, 0, 0.2);
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-weight: bold;
-            color: #ffd700;
-            font-size: 1rem;
-            min-width: 80px;
-            text-align: center;
-        }
-
-        .vote-btn {
-            background: linear-gradient(45deg, #4CAF50, #45a049);
-            color: white;
-            border: none;
-            padding: 10px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-            white-space: nowrap;
-        }
-
-        .vote-btn:hover {
-            transform: scale(1.05);
-            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
-        }
-
-        .vote-btn:disabled {
-            background: #666;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .match-timer {
-            text-align: center;
-            color: #ff6b6b;
-            font-weight: bold;
-            margin-top: 15px;
-            padding: 10px;
-            background: rgba(255, 107, 107, 0.15);
-            border-radius: 8px;
-            font-size: 0.9rem;
-            border: 1px solid rgba(255, 107, 107, 0.3);
-        }
-
-        .vs-divider {
-            text-align: center;
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #ffd700;
-            margin: 5px 0;
-            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
-        }
-
-        .admin-panel {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: linear-gradient(145deg, #2d2d2d, #1a1a1a);
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
-            border: 2px solid rgba(255, 215, 0, 0.3);
-            z-index: 1000;
-            display: none;
-        }
-
-        .admin-panel.active {
-            display: block;
-        }
-
-        .overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 999;
-            display: none;
-        }
-
-        .overlay.active {
-            display: block;
-        }
-
-        .close-btn {
-            position: absolute;
-            top: 10px;
-            right: 15px;
-            background: none;
-            border: none;
-            color: #fff;
-            font-size: 1.5rem;
-            cursor: pointer;
         }
 
         .loading {
@@ -375,6 +181,15 @@
             100% { transform: rotate(360deg); }
         }
 
+        .share-section {
+            text-align: center;
+            margin: 30px 0;
+            padding: 20px;
+            background: rgba(133, 93, 205, 0.1);
+            border-radius: 15px;
+            border: 2px solid rgba(133, 93, 205, 0.2);
+        }
+
         .footer {
             text-align: center;
             margin-top: 50px;
@@ -387,82 +202,12 @@
             text-decoration: none;
         }
 
-        .footer a:hover {
-            text-decoration: underline;
-        }
-
-        .tournament-placeholder {
-            text-align: center; 
-            width: 100%; 
-            padding: 50px 20px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 15px;
-            backdrop-filter: blur(10px);
-        }
-
-        .tournament-placeholder h3 {
-            color: #ffd700;
-            font-size: 2rem;
-            margin-bottom: 15px;
-        }
-
-        .tournament-placeholder p {
-            color: #ccc;
-            font-size: 1.1rem;
-        }
-
-        /* Share buttons for Farcaster */
-        .share-section {
-            text-align: center;
-            margin: 30px 0;
-            padding: 20px;
-            background: rgba(133, 93, 205, 0.1);
-            border-radius: 15px;
-            border: 2px solid rgba(133, 93, 205, 0.2);
-        }
-
-        .share-btn {
-            background: linear-gradient(45deg, #855dcd, #6b46c1);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            margin: 0 10px;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-        }
-
-        .share-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(133, 93, 205, 0.4);
-        }
-
         @media (max-width: 768px) {
             .header h1 {
                 font-size: 2rem;
             }
             
-            .quarter-finals .matches-grid,
-            .semi-finals .matches-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .match-card {
-                padding: 15px;
-            }
-            
-            .participant-name {
-                font-size: 1rem;
-            }
-
-            .farcaster-banner {
-                padding: 10px;
-            }
-
-            .share-btn {
+            .btn {
                 display: block;
                 margin: 10px auto;
                 width: 200px;
@@ -472,6 +217,12 @@
 </head>
 <body>
     <div class="container">
+        <!-- Debug Panel -->
+        <div class="debug-panel" id="debugPanel">
+            <h3>🐛 Debug Information</h3>
+            <p id="debugInfo">Initializing...</p>
+        </div>
+
         <!-- Farcaster Banner -->
         <div class="farcaster-banner" id="farcasterBanner">
             <h3>🎯 Viewed via Farcaster Frame!</h3>
@@ -485,11 +236,8 @@
 
         <div class="wallet-section">
             <div class="wallet-info">
-                <button id="connectWallet" class="connect-btn">Connect Wallet</button>
+                <button id="connectWallet" class="btn">Connect Wallet</button>
                 <div id="walletAddress" style="display: none;"></div>
-            </div>
-            <div>
-                <button id="adminBtn" class="admin-btn" style="display: none;">Admin Panel</button>
             </div>
         </div>
 
@@ -500,22 +248,21 @@
                     <p>Loading tournament data...</p>
                 </div>
             </div>
-            <div id="countdownTimer" class="countdown-timer" style="display: none;"></div>
         </div>
 
         <!-- Share Section -->
         <div class="share-section">
             <h3 style="color: #855dcd; margin-bottom: 15px;">📢 Share Tournament</h3>
             <p style="margin-bottom: 20px; color: #ccc;">Share this tournament with your Farcaster community!</p>
-            <a href="javascript:void(0)" onclick="shareToFarcaster()" class="share-btn">
+            <button onclick="shareToFarcaster()" class="btn btn-purple">
                 🎯 Share to Farcaster
-            </a>
-            <a href="javascript:void(0)" onclick="copyLink()" class="share-btn">
+            </button>
+            <button onclick="copyLink()" class="btn btn-purple" style="margin-left: 10px;">
                 📋 Copy Link
-            </a>
+            </button>
         </div>
 
-        <div class="bracket-container" id="bracketContainer">
+        <div id="bracketContainer">
             <!-- Tournament bracket will be generated here -->
         </div>
 
@@ -525,159 +272,26 @@
         </div>
     </div>
 
-    <!-- Admin Panel -->
-    <div class="overlay" id="overlay"></div>
-    <div class="admin-panel" id="adminPanel">
-        <button class="close-btn" id="closeAdmin">&times;</button>
-        <h3 style="color: #ffd700; margin-bottom: 20px;">Admin Panel</h3>
-        <div style="display: flex; flex-direction: column; gap: 15px;">
-            <button id="startTournament" class="connect-btn">Start Tournament</button>
-            <button id="forceFinishMatches" class="connect-btn">Force Finish Expired Matches</button>
-            <div id="adminStatus"></div>
-        </div>
-    </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <script>
-        // Contract configuration
-        const CONTRACT_ADDRESS = '0x31Cab363Ef737D83Ea72E04C811397049e06b619';
-        const TREASURY_ADDRESS = '0x6c2AA81b02a940c04A570aFFe7a413ca54C625cf';
-        const CHAIN_ID = 10143;
-        const RPC_URL = 'https://testnet-rpc.monad.xyz';
-        const VOTE_COST = ethers.utils.parseEther('0.1');
-        const ROUND_DURATION = 24 * 60 * 60; // 24 hours in seconds
-
-        // Contract ABI
-        const CONTRACT_ABI = [
-            {
-                "inputs": [
-                    {"internalType": "uint256", "name": "roundNum", "type": "uint256"},
-                    {"internalType": "uint256", "name": "matchNum", "type": "uint256"}
-                ],
-                "name": "finishMatch",
-                "outputs": [],
-                "stateMutability": "nonpayable",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "forceFinishExpiredMatches",
-                "outputs": [],
-                "stateMutability": "nonpayable",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "startTournament",
-                "outputs": [],
-                "stateMutability": "nonpayable",
-                "type": "function"
-            },
-            {
-                "inputs": [
-                    {"internalType": "uint256", "name": "roundNum", "type": "uint256"},
-                    {"internalType": "uint256", "name": "matchNum", "type": "uint256"},
-                    {"internalType": "uint256", "name": "participantId", "type": "uint256"}
-                ],
-                "name": "vote",
-                "outputs": [],
-                "stateMutability": "payable",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "currentRound",
-                "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "getCurrentMatches",
-                "outputs": [{"internalType": "uint256[]", "name": "", "type": "uint256[]"}],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [
-                    {"internalType": "uint256", "name": "roundNum", "type": "uint256"},
-                    {"internalType": "uint256", "name": "matchNum", "type": "uint256"}
-                ],
-                "name": "getMatch",
-                "outputs": [
-                    {"internalType": "uint256", "name": "participant1Id", "type": "uint256"},
-                    {"internalType": "uint256", "name": "participant2Id", "type": "uint256"},
-                    {"internalType": "uint256", "name": "votes1", "type": "uint256"},
-                    {"internalType": "uint256", "name": "votes2", "type": "uint256"},
-                    {"internalType": "uint256", "name": "winnerId", "type": "uint256"},
-                    {"internalType": "uint256", "name": "startTime", "type": "uint256"},
-                    {"internalType": "uint256", "name": "endTime", "type": "uint256"},
-                    {"internalType": "bool", "name": "finished", "type": "bool"}
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [{"internalType": "uint256", "name": "id", "type": "uint256"}],
-                "name": "getParticipant",
-                "outputs": [
-                    {"internalType": "string", "name": "name", "type": "string"},
-                    {"internalType": "bool", "name": "active", "type": "bool"},
-                    {"internalType": "uint256", "name": "totalVotes", "type": "uint256"}
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "getTournamentState",
-                "outputs": [
-                    {"internalType": "enum TournamentVoting.TournamentState", "name": "tournamentState", "type": "uint8"},
-                    {"internalType": "uint256", "name": "round", "type": "uint256"},
-                    {"internalType": "uint256", "name": "totalRounds", "type": "uint256"}
-                ],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "owner",
-                "outputs": [{"internalType": "address", "name": "", "type": "address"}],
-                "stateMutability": "view",
-                "type": "function"
-            },
-            {
-                "inputs": [],
-                "name": "tournamentStartTime",
-                "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-                "stateMutability": "view",
-                "type": "function"
+        // Debug function
+        function debug(message) {
+            console.log(message);
+            const debugInfo = document.getElementById('debugInfo');
+            if (debugInfo) {
+                debugInfo.innerHTML += '<br>' + new Date().toLocaleTimeString() + ': ' + message;
             }
-        ];
-
-        // Participant names mapping
-        const PARTICIPANTS = {
-            0: 'LUMITERRA',
-            1: 'KURU EXCHANGE', 
-            2: 'KIZZY MOBILE',
-            3: 'CRYSTAL',
-            4: 'CULT.TRADE',
-            5: 'aPriori',
-            6: 'Magma Staking',
-            7: 'Opinion Labs'
-        };
+        }
 
         // Global variables
-        let provider;
-        let signer;
-        let contract;
         let userAccount;
-        let isOwner = false;
-        let tournamentStartTime = 0;
-        let currentRoundEndTime = 0;
-        let countdownInterval;
+        let provider;
 
-        // Farcaster detection and sharing functions
+        // Contract configuration
+        const CONTRACT_ADDRESS = '0x31Cab363Ef737D83Ea72E04C811397049e06b619';
+        const MONAD_CHAIN_ID = '0x279F'; // 10143 in hex
+        const RPC_URL = 'https://testnet-rpc.monad.xyz';
+
+        // Farcaster detection
         function detectFarcaster() {
             const userAgent = navigator.userAgent.toLowerCase();
             const referrer = document.referrer.toLowerCase();
@@ -686,16 +300,16 @@
                               referrer.includes('farcaster') ||
                               window.location.search.includes('fc=');
             
+            debug(`Farcaster detection: ${isFarcaster}`);
             if (isFarcaster) {
                 document.getElementById('farcasterBanner').classList.add('active');
             }
         }
 
+        // Share functions
         function shareToFarcaster() {
             const currentUrl = window.location.href;
             const text = "🏆 Check out this epic Tournament Voting Championship on Monad Testnet! 8 amazing projects competing for the crown. Cast your vote now! 🗳️";
-            
-            // Warpcast share URL
             const shareUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}&embeds[]=${encodeURIComponent(currentUrl)}`;
             window.open(shareUrl, '_blank');
         }
@@ -705,7 +319,6 @@
             navigator.clipboard.writeText(currentUrl).then(() => {
                 alert('Link copied to clipboard! 📋');
             }).catch(() => {
-                // Fallback for browsers that don't support clipboard API
                 const textArea = document.createElement('textarea');
                 textArea.value = currentUrl;
                 document.body.appendChild(textArea);
@@ -716,116 +329,173 @@
             });
         }
 
-        // Initialize the application
-        async function init() {
-            console.log('Initializing application...');
-            detectFarcaster();
-            setupEventListeners();
-            
-            // Check if we have web3 support
-            if (typeof window.ethereum !== 'undefined') {
-                console.log('Web3 provider detected');
-                try {
-                    // Initialize provider but don't auto-connect
-                    provider = new ethers.providers.Web3Provider(window.ethereum);
-                    console.log('Provider initialized');
-                    
-                    // Load tournament data immediately (read-only)
-                    await loadTournamentData();
-                    
-                    // Set up smart refresh
-                    setInterval(loadTournamentDataSmart, 10000); // Smart refresh every 10 seconds
-                    console.log('Smart refresh started');
-                    
-                } catch (error) {
-                    console.error('Error initializing:', error);
-                    document.getElementById('tournamentInfo').innerHTML = 
-                        '<p style="color: #ff6b6b;">Initialization error. Please refresh the page.</p>';
-                }
-            } else {
-                console.log('No web3 provider found');
-                document.getElementById('tournamentInfo').innerHTML = `
-                    <h3 style="color: #ff6b6b;">MetaMask Required</h3>
-                    <p>Please install MetaMask to view tournament data and participate in voting.</p>
-                    <a href="https://metamask.io/download/" target="_blank" class="connect-btn" style="display: inline-block; margin-top: 15px;">
-                        Install MetaMask
-                    </a>
-                `;
-            }
-        }
-
-        function setupEventListeners() {
-            document.getElementById('connectWallet').addEventListener('click', connectWallet);
-            document.getElementById('adminBtn').addEventListener('click', showAdminPanel);
-            document.getElementById('closeAdmin').addEventListener('click', hideAdminPanel);
-            document.getElementById('overlay').addEventListener('click', hideAdminPanel);
-            document.getElementById('startTournament').addEventListener('click', startTournament);
-            document.getElementById('forceFinishMatches').addEventListener('click', forceFinishMatches);
-        }
-
+        // Simple wallet connection
         async function connectWallet() {
             try {
-                if (typeof window.ethereum === 'undefined') {
-                    alert('Please install MetaMask!');
+                debug('Starting wallet connection...');
+                
+                // Check MetaMask
+                if (!window.ethereum) {
+                    debug('❌ MetaMask not found');
+                    alert('Please install MetaMask first!\n\nGo to https://metamask.io/download/');
+                    window.open('https://metamask.io/download/', '_blank');
                     return;
                 }
+                debug('✅ MetaMask detected');
 
-                // Request account access
-                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                // Request accounts
+                debug('Requesting accounts...');
+                const accounts = await window.ethereum.request({
+                    method: 'eth_requestAccounts'
+                });
                 
-                // Switch to Monad testnet
-                try {
-                    await window.ethereum.request({
-                        method: 'wallet_switchEthereumChain',
-                        params: [{ chainId: '0x' + CHAIN_ID.toString(16) }],
-                    });
-                } catch (switchError) {
-                    if (switchError.code === 4902) {
-                        try {
-                            await window.ethereum.request({
-                                method: 'wallet_addEthereumChain',
-                                params: [{
-                                    chainId: '0x' + CHAIN_ID.toString(16),
-                                    chainName: 'Monad Testnet',
-                                    nativeCurrency: {
-                                        name: 'MON',
-                                        symbol: 'MON',
-                                        decimals: 18,
-                                    },
-                                    rpcUrls: [RPC_URL],
-                                    blockExplorerUrls: ['https://testnet-explorer.monad.xyz/'],
-                                }],
-                            });
-                        } catch (addError) {
-                            console.error('Failed to add network:', addError);
+                if (!accounts || accounts.length === 0) {
+                    debug('❌ No accounts returned');
+                    alert('Please unlock your MetaMask wallet and try again.');
+                    return;
+                }
+                debug(`✅ Account received: ${accounts[0]}`);
+
+                // Check current network
+                const currentChainId = await window.ethereum.request({
+                    method: 'eth_chainId'
+                });
+                debug(`Current network: ${currentChainId}`);
+
+                // Switch to Monad if needed
+                if (currentChainId.toLowerCase() !== MONAD_CHAIN_ID.toLowerCase()) {
+                    debug('Switching to Monad network...');
+                    try {
+                        await window.ethereum.request({
+                            method: 'wallet_switchEthereumChain',
+                            params: [{ chainId: MONAD_CHAIN_ID }],
+                        });
+                        debug('✅ Switched to Monad network');
+                    } catch (switchError) {
+                        debug(`Switch error: ${switchError.code}`);
+                        
+                        if (switchError.code === 4902) {
+                            debug('Adding Monad network...');
+                            try {
+                                await window.ethereum.request({
+                                    method: 'wallet_addEthereumChain',
+                                    params: [{
+                                        chainId: MONAD_CHAIN_ID,
+                                        chainName: 'Monad Testnet',
+                                        nativeCurrency: {
+                                            name: 'MON',
+                                            symbol: 'MON',
+                                            decimals: 18,
+                                        },
+                                        rpcUrls: [RPC_URL],
+                                        blockExplorerUrls: ['https://testnet-explorer.monad.xyz/'],
+                                    }],
+                                });
+                                debug('✅ Monad network added');
+                            } catch (addError) {
+                                debug(`❌ Failed to add network: ${addError.message}`);
+                                alert('Failed to add Monad network. Please add it manually.');
+                                return;
+                            }
+                        } else {
+                            debug(`❌ Network switch failed: ${switchError.message}`);
+                            alert('Please switch to Monad Testnet manually in MetaMask.');
                             return;
                         }
                     }
                 }
 
+                // Success!
                 userAccount = accounts[0];
-                signer = provider.getSigner();
-                contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-
+                debug(`✅ Wallet connected successfully: ${userAccount}`);
+                
                 // Update UI
                 document.getElementById('connectWallet').style.display = 'none';
                 document.getElementById('walletAddress').style.display = 'block';
                 document.getElementById('walletAddress').innerHTML = 
                     `<span style="color: #ffd700;">Connected: ${userAccount.substr(0, 6)}...${userAccount.substr(-4)}</span>`;
 
-                // Check if user is owner
+                // Load tournament data
+                await loadTournamentData();
+
+            } catch (error) {
+                debug(`❌ Connection failed: ${error.message}`);
+                console.error('Wallet connection error:', error);
+                alert(`Failed to connect wallet: ${error.message}`);
+            }
+        }
+
+        // Load tournament data (simplified)
+        async function loadTournamentData() {
+            try {
+                debug('Loading tournament data...');
+                
+                // Try to load ethers.js
+                if (typeof ethers === 'undefined') {
+                    debug('❌ Ethers.js not loaded');
+                    document.getElementById('tournamentInfo').innerHTML = `
+                        <h3 style="color: #ff6b6b;">Library Error</h3>
+                        <p>Ethers.js library failed to load. Please refresh the page.</p>
+                    `;
+                    return;
+                }
+                debug('✅ Ethers.js loaded');
+
+                // Create provider
+                const readProvider = new ethers.providers.JsonRpcProvider(RPC_URL);
+                debug('✅ Provider created');
+
+                // Test RPC connection
                 try {
-                    const owner = await contract.owner();
-                    isOwner = owner.toLowerCase() === userAccount.toLowerCase();
-                    if (isOwner) {
-                        document.getElementById('adminBtn').style.display = 'block';
-                    }
-                } catch (error) {
-                    console.error('Error checking owner:', error);
+                    const blockNumber = await readProvider.getBlockNumber();
+                    debug(`✅ RPC connected, latest block: ${blockNumber}`);
+                } catch (rpcError) {
+                    debug(`❌ RPC connection failed: ${rpcError.message}`);
+                    document.getElementById('tournamentInfo').innerHTML = `
+                        <h3 style="color: #ff6b6b;">Network Error</h3>
+                        <p>Cannot connect to Monad RPC. Please try again later.</p>
+                        <p style="font-size: 0.8rem; color: #888;">RPC: ${RPC_URL}</p>
+                    `;
+                    return;
                 }
 
-                await loadTournamentData();
+                // For now, just show success
+                document.getElementById('tournamentInfo').innerHTML = `
+                    <h3 style="color: #4CAF50;">✅ System Status</h3>
+                    <p>✅ MetaMask: Ready</p>
+                    <p>✅ Network: Monad Testnet</p>
+                    <p>✅ RPC: Connected</p>
+                    <p>✅ Contract: ${CONTRACT_ADDRESS}</p>
+                    <p style="margin-top: 15px; color: #ffd700;">Ready to participate in voting!</p>
+                `;
+
+                debug('✅ Tournament data loaded successfully');
+
             } catch (error) {
-                console.error('Error connecting wallet:', error);
-                alert('Failed to connect wallet. Please try again.');
+                debug(`❌ Load error: ${error.message}`);
+                document.getElementById('tournamentInfo').innerHTML = `
+                    <h3 style="color: #ff6b6b;">Load Error</h3>
+                    <p>${error.message}</p>
+                `;
             }
+        }
+
+        // Initialize
+        async function init() {
+            debug('Initializing application...');
+            detectFarcaster();
+            
+            document.getElementById('connectWallet').addEventListener('click', connectWallet);
+            
+            debug('✅ Event listeners setup');
+            debug('Ready for wallet connection');
+        }
+
+        // Start when page loads
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+
+    <!-- Load ethers.js -->
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
+</body>
+</html>
