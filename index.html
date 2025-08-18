@@ -97,35 +97,37 @@
 
         .bracket-container {
             display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            gap: 30px;
-            min-height: 400px;
-            overflow-x: auto;
+            flex-direction: column;
+            gap: 40px;
+            max-width: 800px;
+            margin: 0 auto;
             padding: 20px 0;
         }
 
-        .round {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-width: 250px;
+        .tournament-round {
+            width: 100%;
         }
 
-        .round h3 {
+        .round-header {
             text-align: center;
             margin-bottom: 20px;
-            color: #ffd700;
-            font-size: 1.2rem;
-            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            padding: 15px;
+            background: linear-gradient(45deg, rgba(255, 215, 0, 0.2), rgba(255, 215, 0, 0.1));
+            border-radius: 12px;
+            border: 2px solid rgba(255, 215, 0, 0.3);
         }
 
-        .matches-container {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            justify-content: center;
-            width: 100%;
+        .round-header h3 {
+            color: #ffd700;
+            font-size: 1.4rem;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            margin: 0;
+        }
+
+        .round-matches {
+            display: grid;
+            gap: 15px;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
         }
 
         .match {
@@ -329,14 +331,11 @@
             .header h1 {
                 font-size: 2rem;
             }
-            .bracket-container {
-                flex-direction: column;
-                align-items: center;
-                gap: 25px;
+            .round-matches {
+                grid-template-columns: 1fr;
             }
-            .round {
-                width: 100%;
-                max-width: 300px;
+            .match {
+                margin: 0 10px;
             }
         }
     </style>
@@ -775,57 +774,77 @@
             }
         }
 
-        // FIXED: Clear bracket container and create only one instance of each round
+        // COMPLETELY NEW: Simple vertical bracket layout
         async function loadBracket(contract) {
             const bracketContainer = document.getElementById('bracketContainer');
-            // Clear any existing content to prevent duplication
             bracketContainer.innerHTML = '';
 
-            // Define clean bracket structure for 8 participants tournament
-            const rounds = [
-                { name: 'Quarter Finals', matches: 4, roundIndex: 0 },
-                { name: 'Semi Finals', matches: 2, roundIndex: 1 },
-                { name: 'Final', matches: 1, roundIndex: 2 }
+            // Get current tournament round for proper display order
+            const tournamentState = await contract.getTournamentState();
+            const currentRound = tournamentState.round.toNumber();
+
+            // Define rounds with proper display order (current round first)
+            const allRounds = [
+                { name: 'Quarter Finals', roundIndex: 0, matches: 4 },
+                { name: 'Semi Finals', roundIndex: 1, matches: 2 },
+                { name: 'Final', roundIndex: 2, matches: 1 }
             ];
 
-            // Create each round only once
-            for (const roundInfo of rounds) {
+            // Show rounds based on current progress
+            for (let i = 0; i < allRounds.length; i++) {
+                const roundInfo = allRounds[i];
+                
+                // Create round container
                 const roundDiv = document.createElement('div');
-                roundDiv.className = 'round';
-                roundDiv.id = `round-${roundInfo.roundIndex}`;
+                roundDiv.className = 'tournament-round';
+                roundDiv.id = `tournament-round-${roundInfo.roundIndex}`;
+                
+                // Round header
+                const roundHeader = document.createElement('div');
+                roundHeader.className = 'round-header';
                 
                 const roundTitle = document.createElement('h3');
                 roundTitle.textContent = roundInfo.name;
-                roundDiv.appendChild(roundTitle);
+                roundHeader.appendChild(roundTitle);
+                roundDiv.appendChild(roundHeader);
 
-                const matchesContainer = document.createElement('div');
-                matchesContainer.className = 'matches-container';
+                // Matches container
+                const matchesGrid = document.createElement('div');
+                matchesGrid.className = 'round-matches';
 
-                // Load matches for this specific round only
+                // Load matches for this round
+                let hasMatches = false;
                 for (let matchIndex = 0; matchIndex < roundInfo.matches; matchIndex++) {
                     try {
                         const matchData = await contract.getMatch(roundInfo.roundIndex, matchIndex);
-                        const matchDiv = createMatchElement(roundInfo.roundIndex, matchIndex, matchData);
-                        matchesContainer.appendChild(matchDiv);
+                        const matchElement = createSimpleMatchElement(roundInfo.roundIndex, matchIndex, matchData);
+                        matchesGrid.appendChild(matchElement);
+                        hasMatches = true;
                     } catch (error) {
-                        // Show placeholder for future matches
-                        const matchDiv = createPlaceholderMatch(roundInfo.roundIndex, matchIndex);
-                        matchesContainer.appendChild(matchDiv);
+                        // Create placeholder if match doesn't exist yet
+                        if (roundInfo.roundIndex <= currentRound) {
+                            const placeholderElement = createSimplePlaceholder(roundInfo.roundIndex, matchIndex);
+                            matchesGrid.appendChild(placeholderElement);
+                            hasMatches = true;
+                        }
                     }
                 }
 
-                roundDiv.appendChild(matchesContainer);
-                bracketContainer.appendChild(roundDiv);
+                // Only add round if it has matches or is current/past round
+                if (hasMatches || roundInfo.roundIndex <= currentRound) {
+                    roundDiv.appendChild(matchesGrid);
+                    bracketContainer.appendChild(roundDiv);
+                }
             }
         }
 
-        function createPlaceholderMatch(roundNum, matchNum) {
+        function createSimplePlaceholder(roundNum, matchNum) {
             const matchDiv = document.createElement('div');
             matchDiv.className = 'match';
             matchDiv.id = `match-${roundNum}-${matchNum}`;
             matchDiv.innerHTML = `
                 <div class="participant">
-                    <span class="participant-name">TBD</span>
+                    <span class="participant-name">Waiting for participants...</span>
                     <div class="participant-actions">
                         <span class="votes">0 votes</span>
                     </div>
@@ -840,7 +859,8 @@
             return matchDiv;
         }
 
-        function createMatchElement(roundNum, matchNum, matchData) {
+        function createSimpleMatchElement(roundNum, matchNum, matchData) {
+        function createSimpleMatchElement(roundNum, matchNum, matchData) {
             const matchDiv = document.createElement('div');
             matchDiv.className = 'match';
             matchDiv.id = `match-${roundNum}-${matchNum}`;
@@ -856,72 +876,28 @@
             const participant1Name = PARTICIPANTS[participant1Id] || `Participant ${participant1Id}`;
             const participant2Name = PARTICIPANTS[participant2Id] || `Participant ${participant2Id}`;
 
-            // Create participant 1 element
-            const participant1Div = document.createElement('div');
-            participant1Div.className = 'participant' + (winnerId === participant1Id && finished ? ' winner' : '');
-            
-            const participant1NameSpan = document.createElement('span');
-            participant1NameSpan.className = 'participant-name';
-            participant1NameSpan.textContent = participant1Name;
-            
-            const participant1Actions = document.createElement('div');
-            participant1Actions.className = 'participant-actions';
-            
-            const votes1Span = document.createElement('span');
-            votes1Span.className = 'votes';
-            votes1Span.textContent = `${votes1} votes`;
-            participant1Actions.appendChild(votes1Span);
-            
-            // Add vote button if not finished and user is connected
-            if (!finished && userAccount) {
-                const vote1Btn = document.createElement('button');
-                vote1Btn.className = 'vote-btn';
-                vote1Btn.textContent = 'Vote';
-                vote1Btn.onclick = () => vote(roundNum, matchNum, participant1Id);
-                participant1Actions.appendChild(vote1Btn);
-            }
-            
-            participant1Div.appendChild(participant1NameSpan);
-            participant1Div.appendChild(participant1Actions);
+            // Simple HTML structure - more reliable
+            matchDiv.innerHTML = `
+                <div class="participant ${winnerId === participant1Id && finished ? 'winner' : ''}" id="participant-${roundNum}-${matchNum}-1">
+                    <span class="participant-name">${participant1Name}</span>
+                    <div class="participant-actions">
+                        <span class="votes">${votes1} votes</span>
+                        ${!finished && userAccount ? `<button class="vote-btn" onclick="vote(${roundNum}, ${matchNum}, ${participant1Id})">Vote</button>` : ''}
+                    </div>
+                </div>
+                <div class="participant ${winnerId === participant2Id && finished ? 'winner' : ''}" id="participant-${roundNum}-${matchNum}-2">
+                    <span class="participant-name">${participant2Name}</span>
+                    <div class="participant-actions">
+                        <span class="votes">${votes2} votes</span>
+                        ${!finished && userAccount ? `<button class="vote-btn" onclick="vote(${roundNum}, ${matchNum}, ${participant2Id})">Vote</button>` : ''}
+                    </div>
+                </div>
+                ${!finished && endTime > 0 ? `<div class="match-timer" id="timer-${roundNum}-${matchNum}">Loading timer...</div>` : ''}
+            `;
 
-            // Create participant 2 element
-            const participant2Div = document.createElement('div');
-            participant2Div.className = 'participant' + (winnerId === participant2Id && finished ? ' winner' : '');
-            
-            const participant2NameSpan = document.createElement('span');
-            participant2NameSpan.className = 'participant-name';
-            participant2NameSpan.textContent = participant2Name;
-            
-            const participant2Actions = document.createElement('div');
-            participant2Actions.className = 'participant-actions';
-            
-            const votes2Span = document.createElement('span');
-            votes2Span.className = 'votes';
-            votes2Span.textContent = `${votes2} votes`;
-            participant2Actions.appendChild(votes2Span);
-            
-            // Add vote button if not finished and user is connected
-            if (!finished && userAccount) {
-                const vote2Btn = document.createElement('button');
-                vote2Btn.className = 'vote-btn';
-                vote2Btn.textContent = 'Vote';
-                vote2Btn.onclick = () => vote(roundNum, matchNum, participant2Id);
-                participant2Actions.appendChild(vote2Btn);
-            }
-            
-            participant2Div.appendChild(participant2NameSpan);
-            participant2Div.appendChild(participant2Actions);
-
-            matchDiv.appendChild(participant1Div);
-            matchDiv.appendChild(participant2Div);
-
-            // Add timer if match is active
+            // Start timer if match is active
             if (!finished && endTime > 0) {
-                const timerDiv = document.createElement('div');
-                timerDiv.className = 'match-timer';
-                timerDiv.id = `timer-${roundNum}-${matchNum}`;
-                matchDiv.appendChild(timerDiv);
-                updateMatchTimer(roundNum, matchNum, endTime);
+                setTimeout(() => updateMatchTimer(roundNum, matchNum, endTime), 100);
             }
 
             return matchDiv;
