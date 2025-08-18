@@ -20,7 +20,7 @@
         }
 
         .container {
-            max-width: 1400px;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
         }
@@ -35,7 +35,7 @@
         }
 
         .header h1 {
-            font-size: 3rem;
+            font-size: 2.5rem;
             background: linear-gradient(45deg, #ffd700, #ffed4e);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -62,7 +62,7 @@
             background: linear-gradient(45deg, #ffd700, #ffed4e);
             color: #000;
             border: none;
-            padding: 12px 24px;
+            padding: 10px 20px;
             border-radius: 8px;
             cursor: pointer;
             font-weight: bold;
@@ -85,7 +85,7 @@
         }
 
         .countdown-timer {
-            font-size: 1.5rem;
+            font-size: 1.3rem;
             color: #ff6b6b;
             font-weight: bold;
             margin-top: 15px;
@@ -98,26 +98,25 @@
         .bracket-container {
             display: flex;
             justify-content: center;
-            gap: 40px;
-            min-height: 500px;
+            align-items: flex-start;
+            gap: 30px;
+            min-height: 400px;
             overflow-x: auto;
             padding: 20px 0;
-            max-width: 100%;
         }
 
         .round {
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            min-width: 280px;
-            max-width: 320px;
+            align-items: center;
+            min-width: 250px;
         }
 
         .round h3 {
             text-align: center;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             color: #ffd700;
-            font-size: 1.3rem;
+            font-size: 1.2rem;
             text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
         }
 
@@ -126,34 +125,35 @@
             flex-direction: column;
             gap: 20px;
             justify-content: center;
+            width: 100%;
         }
 
         .match {
             background: linear-gradient(145deg, #2d2d2d, #1a1a1a);
-            border-radius: 12px;
-            padding: 15px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 12px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
             border: 2px solid rgba(255, 215, 0, 0.2);
             transition: all 0.3s ease;
-            min-height: 120px;
+            min-height: 100px;
         }
 
         .match:hover {
             border-color: rgba(255, 215, 0, 0.5);
-            box-shadow: 0 12px 35px rgba(255, 215, 0, 0.1);
+            box-shadow: 0 8px 25px rgba(255, 215, 0, 0.1);
         }
 
         .participant {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px 12px;
-            margin: 5px 0;
+            padding: 8px 10px;
+            margin: 4px 0;
             background: rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
+            border-radius: 6px;
             transition: all 0.3s ease;
             border: 2px solid transparent;
-            min-height: 45px;
+            min-height: 38px;
         }
 
         .participant:hover {
@@ -168,24 +168,24 @@
 
         .participant-name {
             font-weight: bold;
-            font-size: 1rem;
+            font-size: 0.9rem;
             flex-grow: 1;
         }
 
         .participant-actions {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }
 
         .votes {
             background: rgba(255, 215, 0, 0.2);
-            padding: 6px 12px;
-            border-radius: 15px;
+            padding: 4px 8px;
+            border-radius: 12px;
             font-weight: bold;
             color: #ffd700;
-            font-size: 0.9rem;
-            min-width: 70px;
+            font-size: 0.8rem;
+            min-width: 60px;
             text-align: center;
         }
 
@@ -193,11 +193,11 @@
             background: linear-gradient(45deg, #4CAF50, #45a049);
             color: white;
             border: none;
-            padding: 6px 12px;
+            padding: 4px 10px;
             border-radius: 4px;
             cursor: pointer;
             font-weight: bold;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             transition: all 0.3s ease;
             white-space: nowrap;
         }
@@ -217,11 +217,11 @@
             text-align: center;
             color: #ff6b6b;
             font-weight: bold;
-            margin-top: 10px;
-            padding: 8px;
+            margin-top: 8px;
+            padding: 6px;
             background: rgba(255, 107, 107, 0.1);
-            border-radius: 6px;
-            font-size: 0.8rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
         }
 
         .admin-panel {
@@ -290,9 +290,10 @@
 
         .footer {
             text-align: center;
-            margin-top: 50px;
+            margin-top: 40px;
             padding: 20px;
             color: #888;
+            font-size: 0.9rem;
         }
 
         .footer a {
@@ -307,7 +308,7 @@
         .tournament-placeholder {
             text-align: center; 
             width: 100%; 
-            padding: 50px 20px;
+            padding: 40px 20px;
             background: rgba(255, 255, 255, 0.05);
             border-radius: 15px;
             backdrop-filter: blur(10px);
@@ -315,22 +316,13 @@
 
         .tournament-placeholder h3 {
             color: #ffd700;
-            font-size: 2rem;
+            font-size: 1.8rem;
             margin-bottom: 15px;
         }
 
         .tournament-placeholder p {
             color: #ccc;
-            font-size: 1.1rem;
-        }
-
-        @media (max-width: 1200px) {
-            .bracket-container {
-                gap: 25px;
-            }
-            .round {
-                min-width: 250px;
-            }
+            font-size: 1rem;
         }
 
         @media (max-width: 768px) {
@@ -340,11 +332,11 @@
             .bracket-container {
                 flex-direction: column;
                 align-items: center;
-                gap: 30px;
+                gap: 25px;
             }
             .round {
                 width: 100%;
-                max-width: 320px;
+                max-width: 300px;
             }
         }
     </style>
@@ -655,7 +647,7 @@
                     <p>Current Round: ${currentRound} / ${totalRounds}</p>
                 `;
 
-                // Get tournament start time
+                // Get tournament start time and setup countdown
                 if (state === 1) {
                     try {
                         tournamentStartTime = (await readContract.tournamentStartTime()).toNumber();
@@ -783,8 +775,10 @@
             }
         }
 
+        // FIXED: Clear bracket container and create only one instance of each round
         async function loadBracket(contract) {
             const bracketContainer = document.getElementById('bracketContainer');
+            // Clear any existing content to prevent duplication
             bracketContainer.innerHTML = '';
 
             // Define clean bracket structure for 8 participants tournament
@@ -794,8 +788,8 @@
                 { name: 'Final', matches: 1, roundIndex: 2 }
             ];
 
-            for (let i = 0; i < rounds.length; i++) {
-                const roundInfo = rounds[i];
+            // Create each round only once
+            for (const roundInfo of rounds) {
                 const roundDiv = document.createElement('div');
                 roundDiv.className = 'round';
                 roundDiv.id = `round-${roundInfo.roundIndex}`;
@@ -950,7 +944,7 @@
                 const minutes = Math.floor((remaining % 3600) / 60);
                 const seconds = remaining % 60;
 
-                timerElement.textContent = `Match ends in: ${hours}h ${minutes}m ${seconds}s`;
+                timerElement.textContent = `Ends in: ${hours}h ${minutes}m ${seconds}s`;
             }
 
             update();
