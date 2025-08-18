@@ -769,7 +769,6 @@
 
         // Only update vote counts without rebuilding bracket structure
         async function updateVoteCountsOnly(contract) {
-            // Check all possible matches in all rounds
             const rounds = [
                 { matches: 4, roundIndex: 0 },
                 { matches: 2, roundIndex: 1 },
@@ -783,7 +782,6 @@
                         updateMatchVotesOnly(round.roundIndex, matchIndex, matchData);
                     } catch (error) {
                         // Match doesn't exist yet, skip
-                        continue;
                     }
                 }
             }
@@ -818,22 +816,20 @@
 
         async function loadBracket(contract) {
             const bracketContainer = document.getElementById('bracketContainer');
-            
-            // Clear any existing content completely
             bracketContainer.innerHTML = '';
 
-            // Define all tournament rounds - always show all 3 rounds
+            // Define tournament rounds structure
             const rounds = [
                 { name: 'Quarter Finals', matches: 4, roundIndex: 0, cssClass: 'quarter-finals' },
                 { name: 'Semi Finals', matches: 2, roundIndex: 1, cssClass: 'semi-finals' },
                 { name: 'Final', matches: 1, roundIndex: 2, cssClass: 'finals' }
             ];
 
-            // Create each round section - show all rounds always
+            // Create each round section
             for (let roundInfo of rounds) {
                 const roundSection = document.createElement('div');
                 roundSection.className = `round-section ${roundInfo.cssClass}`;
-                roundSection.id = `round-section-${roundInfo.roundIndex}`;
+                roundSection.id = `round-${roundInfo.roundIndex}`;
 
                 const roundTitle = document.createElement('div');
                 roundTitle.className = 'round-title';
@@ -850,7 +846,7 @@
                         const matchCard = createMatchCard(roundInfo.roundIndex, matchIndex, matchData);
                         matchesGrid.appendChild(matchCard);
                     } catch (error) {
-                        // Show TBD placeholder for matches that don't exist yet
+                        // Show placeholder for future matches
                         const matchCard = createPlaceholderCard(roundInfo.roundIndex, matchIndex);
                         matchesGrid.appendChild(matchCard);
                     }
