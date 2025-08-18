@@ -816,20 +816,29 @@
 
         async function loadBracket(contract) {
             const bracketContainer = document.getElementById('bracketContainer');
+            
+            // Clear any existing content completely
             bracketContainer.innerHTML = '';
+            
+            // Get current tournament state to determine which rounds to show
+            const tournamentState = await contract.getTournamentState();
+            const currentRound = tournamentState.round.toNumber();
 
-            // Define tournament rounds structure
+            // Only show rounds that are active or completed
             const rounds = [
                 { name: 'Quarter Finals', matches: 4, roundIndex: 0, cssClass: 'quarter-finals' },
                 { name: 'Semi Finals', matches: 2, roundIndex: 1, cssClass: 'semi-finals' },
                 { name: 'Final', matches: 1, roundIndex: 2, cssClass: 'finals' }
             ];
 
-            // Create each round section
+            // Create each round section only once
             for (let roundInfo of rounds) {
+                // Skip rounds that haven't started yet (except current round)
+                if (roundInfo.roundIndex > currentRound + 1) continue;
+
                 const roundSection = document.createElement('div');
                 roundSection.className = `round-section ${roundInfo.cssClass}`;
-                roundSection.id = `round-${roundInfo.roundIndex}`;
+                roundSection.id = `round-section-${roundInfo.roundIndex}`;
 
                 const roundTitle = document.createElement('div');
                 roundTitle.className = 'round-title';
@@ -840,20 +849,28 @@
                 matchesGrid.className = 'matches-grid';
 
                 // Load matches for this round
+                let hasMatches = false;
                 for (let matchIndex = 0; matchIndex < roundInfo.matches; matchIndex++) {
                     try {
                         const matchData = await contract.getMatch(roundInfo.roundIndex, matchIndex);
                         const matchCard = createMatchCard(roundInfo.roundIndex, matchIndex, matchData);
                         matchesGrid.appendChild(matchCard);
+                        hasMatches = true;
                     } catch (error) {
-                        // Show placeholder for future matches
-                        const matchCard = createPlaceholderCard(roundInfo.roundIndex, matchIndex);
-                        matchesGrid.appendChild(matchCard);
+                        // Only show placeholder for current round
+                        if (roundInfo.roundIndex === currentRound) {
+                            const matchCard = createPlaceholderCard(roundInfo.roundIndex, matchIndex);
+                            matchesGrid.appendChild(matchCard);
+                            hasMatches = true;
+                        }
                     }
                 }
 
-                roundSection.appendChild(matchesGrid);
-                bracketContainer.appendChild(roundSection);
+                // Only add the round section if it has matches
+                if (hasMatches) {
+                    roundSection.appendChild(matchesGrid);
+                    bracketContainer.appendChild(roundSection);
+                }
             }
         }
 
