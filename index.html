@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Bracket Voting – Monad Testnet</title>
+  <title>Bracket Voting — Monad Testnet</title>
   <style>
     :root{color-scheme:dark}
     *{box-sizing:border-box}
-    html,body{margin:0;padding:0;background:#000;color:#e5e7eb;font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial,Apple Color Emoji,Segoe UI Emoji}
+    html,body{margin:0;padding:0;background:#000;color:#e5e7eb;font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,Helvetica,Arial}
     a{color:#a5b4fc;text-decoration:none}
     a:hover{text-decoration:underline}
     .container{max-width:1200px;margin:0 auto;padding:24px}
@@ -20,16 +20,16 @@
     .btn.primary{background:#4f46e5;border-color:#4f46e5}
     .btn.primary:hover{filter:brightness(1.1)}
     .badge{font-size:12px;padding:6px 10px;border:1px solid #2a2a2a;border-radius:999px;background:#0b0b0b;color:#cbd5e1}
-    .grid{display:grid;grid-template-columns:1fr 320px;gap:18px}
-    .bracket{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;align-items:center}
+    .grid{display:grid;grid-template-columns:1fr 340px;gap:18px}
+    .bracket{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;align-items:flex-start}
     .col{display:flex;flex-direction:column;gap:16px}
     .match{padding:12px}
     .row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:12px;border:1px solid #2a2a2a;background:linear-gradient(180deg,#0b0b0b,#0a0a0a)}
     .row.win{border-color:#16a34a}
     .row.lose{opacity:.75}
-    .pname{font-weight:700}
+    .pname{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
     .actions{display:flex;align-items:center;gap:8px}
-    input.qty{width:64px;background:#0c0c0c;border:1px solid #2a2a2a;border-radius:10px;padding:8px;color:#fff}
+    input.qty{width:72px;background:#0c0c0c;border:1px solid #2a2a2a;border-radius:10px;padding:8px;color:#fff}
     .timer{font-size:12px;color:#9ca3af}
     .panel{padding:16px}
     .subtitle{font-weight:700;margin:0 0 8px 0;font-size:14px;color:#a3a3a3}
@@ -41,12 +41,8 @@
     .hint{font-size:12px;color:#a3a3a3}
     .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
     .logo{width:26px;height:26px;border-radius:50%;object-fit:cover;border:1px solid #2a2a2a;background:#111}
-    /* connectors (simple) */
     .connector{height:2px;background:#1f2937;margin:4px 0;border-radius:1px}
-    @media (max-width: 980px){
-      .grid{grid-template-columns:1fr}
-      .bracket{grid-template-columns:1fr}
-    }
+    @media (max-width: 1080px){.grid{grid-template-columns:1fr}.bracket{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -54,7 +50,7 @@
     <div class="header">
       <div>
         <div class="title">🏆 Bracket Voting — Monad Testnet</div>
-        <div class="muted hint">8 peserta • Round 1 = 4 match (24 jam) • Biaya per vote: <b>0.1 MON</b> • ChainID <span class="mono">10143</span></div>
+        <div class="muted hint">8 peserta • Round 1 = 4 match (24 jam) • Per vote <b id="voteCostLabel">0.1 MON</b> • ChainID <span class="mono">10143</span></div>
       </div>
       <div class="toolbar">
         <span id="networkBadge" class="badge">Not connected</span>
@@ -73,7 +69,7 @@
 
       <div class="card panel">
         <div class="subtitle">Admin (owner only)</div>
-        <div class="hint" style="margin-bottom:10px">Tombol ini hanya berhasil bila wallet yang terhubung adalah <i>owner</i> kontrak.</div>
+        <div class="hint" style="margin-bottom:10px">Tombol hanya berfungsi jika wallet yang terhubung adalah <i>owner</i> kontrak.</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn primary" id="startBtn">Start Tournament</button>
           <button class="btn" id="forceBtn">Force Finish Expired</button>
@@ -81,7 +77,9 @@
         <div style="height:8px"></div>
         <div class="subtitle">Finish Match (manual)</div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <label class="hint">Round</label>
           <input id="roundInput" class="qty" type="number" min="1" value="1"/>
+          <label class="hint">Match</label>
           <input id="matchInput" class="qty" type="number" min="1" value="1"/>
           <button class="btn" id="finishBtn">Finish</button>
         </div>
@@ -105,80 +103,77 @@
   const CHAIN_ID = 10143;
   const CONTRACT_ADDRESS = '0x31Cab363Ef737D83Ea72E04C811397049e06b619';
   const TREASURY = '0x6c2AA81b02a940c04A570aFFe7a413ca54C625cf';
-  const VOTE_COST = 0.1; // MON per vote
+  const DEFAULT_VOTE_COST = 0.1; // fallback if on-chain not readable
 
-  // Optional: logo URLs (you can change later)
-  const PARTICIPANT_LOGOS = {
-    1: '', // LUMITERRA
-    2: '', // KURU EXCHANGE
-    3: '', // KIZZY MOBILE
-    4: '', // CRYSTAL
-    5: '', // CULT
-    6: '', // aPriori
-    7: '', // Magma
-    8: ''  // O.LAB
-  };
+  // Optional DB (Supabase) — isi kalau mau log ke DB
+  const SUPABASE_URL = '';
+  const SUPABASE_KEY = '';
 
-  // Fallback names if on-chain names are empty
+  // Peserta fallback (pakai jika nama on-chain kosong)
   const FALLBACK_NAMES = [
     null,
     'LUMITERRA','KURU EXCHANGE','KIZZY MOBILE','CRYSTAL',
     'CULT','aPriori','Magma','O.LAB'
   ];
 
+  const PARTICIPANT_LOGOS = {1:'',2:'',3:'',4:'',5:'',6:'',7:'',8:''};
+
   document.getElementById('addr').textContent = CONTRACT_ADDRESS;
   document.getElementById('treasury').textContent = TREASURY;
 
-  // ====== ABI (from user) ======
+  // ====== ABI (dari user) ======
   const ABI = [
-	{"inputs":[{"internalType":"uint256","name":"roundNum","type":"uint256"},{"internalType":"uint256","name":"matchNum","type":"uint256"}],"name":"finishMatch","outputs":[],"stateMutability":"nonpayable","type":"function"},
-	{"inputs":[],"name":"forceFinishExpiredMatches","outputs":[],"stateMutability":"nonpayable","type":"function"},
-	{"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
-	{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"round","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"matchIndex","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"winner","type":"uint256"}],"name":"MatchFinished","type":"event"},
-	{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"round","type":"uint256"}],"name":"RoundFinished","type":"event"},
-	{"inputs":[],"name":"startTournament","outputs":[],"stateMutability":"nonpayable","type":"function"},
-	{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"winner","type":"uint256"}],"name":"TournamentFinished","type":"event"},
-	{"inputs":[{"internalType":"uint256","name":"roundNum","type":"uint256"},{"internalType":"uint256","name":"matchNum","type":"uint256"},{"internalType":"uint256","name":"participantId","type":"uint256"}],"name":"vote","outputs":[],"stateMutability":"payable","type":"function"},
-	{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"voter","type":"address"},{"indexed":false,"internalType":"uint256","name":"round","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"matchIndex","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"participant","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"VoteCast","type":"event"},
-	{"inputs":[],"name":"currentRound","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-	{"inputs":[],"name":"getCurrentMatches","outputs":[{"internalType":"uint256[]","name":"","type":"uint256[]"}],"stateMutability":"view","type":"function"},
-	{"inputs":[{"internalType":"uint256","name":"roundNum","type":"uint256"},{"internalType":"uint256","name":"matchNum","type":"uint256"}],"name":"getMatch","outputs":[{"internalType":"uint256","name":"participant1Id","type":"uint256"},{"internalType":"uint256","name":"participant2Id","type":"uint256"},{"internalType":"uint256","name":"votes1","type":"uint256"},{"internalType":"uint256","name":"votes2","type":"uint256"},{"internalType":"uint256","name":"winnerId","type":"uint256"},{"internalType":"uint256","name":"startTime","type":"uint256"},{"internalType":"uint256","name":"endTime","type":"uint256"},{"internalType":"bool","name":"finished","type":"bool"}],"stateMutability":"view","type":"function"},
-	{"inputs":[{"internalType":"uint256","name":"id","type":"uint256"}],"name":"getParticipant","outputs":[{"internalType":"string","name":"name","type":"string"},{"internalType":"bool","name":"active","type":"bool"},{"internalType":"uint256","name":"totalVotes","type":"uint256"}],"stateMutability":"view","type":"function"},
-	{"inputs":[],"name":"getParticipantCount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-	{"inputs":[],"name":"getRoundCount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-	{"inputs":[],"name":"getTournamentState","outputs":[{"internalType":"uint8","name":"tournamentState","type":"uint8"},{"internalType":"uint256","name":"round","type":"uint256"},{"internalType":"uint256","name":"totalRounds","type":"uint256"}],"stateMutability":"view","type":"function"},
-	{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
-	{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"participants","outputs":[{"internalType":"string","name":"name","type":"string"},{"internalType":"bool","name":"active","type":"bool"},{"internalType":"uint256","name":"totalVotes","type":"uint256"}],"stateMutability":"view","type":"function"},
-	{"inputs":[],"name":"ROUND_DURATION","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-	{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"rounds","outputs":[{"internalType":"bool","name":"finished","type":"bool"}],"stateMutability":"view","type":"function"},
-	{"inputs":[],"name":"state","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},
-	{"inputs":[],"name":"treasury","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
-	{"inputs":[{"internalType":"address","name":"","type":"address"},{"internalType":"uint256","name":"","type":"uint256"},{"internalType":"uint256","name":"","type":"uint256"}],"name":"userVotes","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
-	{"inputs":[],"name":"VOTE_COST","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
+    {"inputs":[{"internalType":"uint256","name":"roundNum","type":"uint256"},{"internalType":"uint256","name":"matchNum","type":"uint256"}],"name":"finishMatch","outputs":[],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[],"name":"forceFinishExpiredMatches","outputs":[],"stateMutability":"nonpayable","type":"function"},
+    {"inputs":[],"stateMutability":"nonpayable","type":"constructor"},
+    {"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"round","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"matchIndex","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"winner","type":"uint256"}],"name":"MatchFinished","type":"event"},
+    {"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"round","type":"uint256"}],"name":"RoundFinished","type":"event"},
+    {"inputs":[],"name":"startTournament","outputs":[],"stateMutability":"nonpayable","type":"function"},
+    {"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"winner","type":"uint256"}],"name":"TournamentFinished","type":"event"},
+    {"inputs":[{"internalType":"uint256","name":"roundNum","type":"uint256"},{"internalType":"uint256","name":"matchNum","type":"uint256"},{"internalType":"uint256","name":"participantId","type":"uint256"}],"name":"vote","outputs":[],"stateMutability":"payable","type":"function"},
+    {"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"voter","type":"address"},{"indexed":false,"internalType":"uint256","name":"round","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"matchIndex","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"participant","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"VoteCast","type":"event"},
+    {"inputs":[],"name":"currentRound","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"getCurrentMatches","outputs":[{"internalType":"uint256[]","name":"","type":"uint256[]"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"roundNum","type":"uint256"},{"internalType":"uint256","name":"matchNum","type":"uint256"}],"name":"getMatch","outputs":[{"internalType":"uint256","name":"participant1Id","type":"uint256"},{"internalType":"uint256","name":"participant2Id","type":"uint256"},{"internalType":"uint256","name":"votes1","type":"uint256"},{"internalType":"uint256","name":"votes2","type":"uint256"},{"internalType":"uint256","name":"winnerId","type":"uint256"},{"internalType":"uint256","name":"startTime","type":"uint256"},{"internalType":"uint256","name":"endTime","type":"uint256"},{"internalType":"bool","name":"finished","type":"bool"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"id","type":"uint256"}],"name":"getParticipant","outputs":[{"internalType":"string","name":"name","type":"string"},{"internalType":"bool","name":"active","type":"bool"},{"internalType":"uint256","name":"totalVotes","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"getParticipantCount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"getRoundCount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"getTournamentState","outputs":[{"internalType":"uint8","name":"tournamentState","type":"uint8"},{"internalType":"uint256","name":"round","type":"uint256"},{"internalType":"uint256","name":"totalRounds","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"participants","outputs":[{"internalType":"string","name":"name","type":"string"},{"internalType":"bool","name":"active","type":"bool"},{"internalType":"uint256","name":"totalVotes","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"ROUND_DURATION","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"rounds","outputs":[{"internalType":"bool","name":"finished","type":"bool"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"state","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"treasury","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
+    {"inputs":[{"internalType":"address","name":"","type":"address"},{"internalType":"uint256","name":"","type":"uint256"},{"internalType":"uint256","name":"","type":"uint256"}],"name":"userVotes","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},
+    {"inputs":[],"name":"VOTE_COST","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"}
   ];
 
-  // ====== Providers & Contract ======
-  const { BrowserProvider, JsonRpcProvider, Contract, parseEther } = ethers;
+  // ====== Ethers Providers & Contract ======
+  const { BrowserProvider, JsonRpcProvider, Contract, parseEther, formatEther } = ethers;
   const readProvider = new JsonRpcProvider(RPC_URL, CHAIN_ID);
   const readContract = new Contract(CONTRACT_ADDRESS, ABI, readProvider);
 
   let browserProvider = null; // set after connect
   let writeContract = null;
   let currentAccount = null;
+  let voteCostMON = DEFAULT_VOTE_COST;
 
   async function ensureChain(){
     if(!window.ethereum) throw new Error('Wallet not found');
     const provider = new BrowserProvider(window.ethereum);
-    const net = await provider.getNetwork();
-    if(Number(net.chainId) !== CHAIN_ID){
-      await provider.send('wallet_addEthereumChain', [{
-        chainId: '0x'+CHAIN_ID.toString(16),
-        chainName: 'Monad Testnet',
-        nativeCurrency: { name: 'MON', symbol: 'MON', decimals: 18 },
-        rpcUrls: [RPC_URL],
-        blockExplorerUrls: []
-      }]);
-    }
+    try{
+      const net = await provider.getNetwork();
+      if(Number(net.chainId) !== CHAIN_ID){
+        await provider.send('wallet_addEthereumChain', [{
+          chainId: '0x'+CHAIN_ID.toString(16),
+          chainName: 'Monad Testnet',
+          nativeCurrency: { name: 'MON', symbol: 'MON', decimals: 18 },
+          rpcUrls: [RPC_URL],
+          blockExplorerUrls: []
+        }]);
+      }
+    }catch(e){ console.warn('ensureChain:', e); }
   }
 
   async function connect(){
@@ -190,7 +185,11 @@
     writeContract = new Contract(CONTRACT_ADDRESS, ABI, signer);
     document.getElementById('connectBtn').textContent = currentAccount.slice(0,6)+'…'+currentAccount.slice(-4);
     document.getElementById('networkBadge').textContent = 'Connected';
-    document.getElementById('networkBadge').className = 'badge';
+    try{
+      const onChainCost = await readContract.VOTE_COST().catch(()=>null);
+      if(onChainCost){ voteCostMON = Number(formatEther(onChainCost)); }
+      document.getElementById('voteCostLabel').textContent = (voteCostMON.toFixed(3))+' MON';
+    }catch(e){}
   }
 
   document.getElementById('connectBtn').addEventListener('click', async()=>{
@@ -213,28 +212,22 @@
   // ====== Writes ======
   async function vote(roundNum, matchNum, participantId, qty){
     if(!writeContract) await connect();
-    const total = (VOTE_COST * Number(qty)).toString();
+    const total = (voteCostMON * Number(qty)).toString();
     const tx = await writeContract.vote(roundNum, matchNum, participantId, { value: parseEther(total) });
     await tx.wait();
-    toast('Vote submitted: '+tx.hash.slice(0,10)+'…');
+    toast('Vote submitted');
+    logVote({roundNum, matchNum, participantId, qty, from: currentAccount});
     await refresh();
   }
-  async function startTournament(){ if(!writeContract) await connect(); const tx = await writeContract.startTournament(); await tx.wait(); toast('Tournament started'); await refresh(); }
-  async function finishMatch(roundNum, matchNum){ if(!writeContract) await connect(); const tx = await writeContract.finishMatch(roundNum, matchNum); await tx.wait(); toast('Match finished'); await refresh(); }
-  async function forceFinish(){ if(!writeContract) await connect(); const tx = await writeContract.forceFinishExpiredMatches(); await tx.wait(); toast('Forced finish executed'); await refresh(); }
+  async function startTournament(){ if(!writeContract) await connect(); const tx = await writeContract.startTournament(); await tx.wait(); toast('Tournament started'); saveTournamentState(); await refresh(); }
+  async function finishMatch(roundNum, matchNum){ if(!writeContract) await connect(); const tx = await writeContract.finishMatch(roundNum, matchNum); await tx.wait(); toast('Match finished'); saveTournamentState(); await refresh(); }
+  async function forceFinish(){ if(!writeContract) await connect(); const tx = await writeContract.forceFinishExpiredMatches(); await tx.wait(); toast('Forced finish executed'); saveTournamentState(); await refresh(); }
 
   // ====== UI Helpers ======
-  function fmtTime(ms){
-    if(ms<=0) return '00:00:00';
-    const s = Math.floor(ms/1000); const h=Math.floor(s/3600); const m=Math.floor((s%3600)/60); const ss=s%60;
-    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
-  }
-  function imgTag(id){
-    const url = PARTICIPANT_LOGOS[id]||'';
-    return `<img class="logo" src="${url||'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"26\" height=\"26\"><rect width=\"100%\" height=\"100%\" fill=\"#111\"/><text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\" fill=\"#6b7280\" font-size=\"12\" font-family=\"Arial\">${id}</text></svg>')}" alt="logo">`;
-  }
+  function fmtTime(ms){ if(ms<=0) return '00:00:00'; const s = Math.floor(ms/1000); const h=Math.floor(s/3600); const m=Math.floor((s%3600)/60); const ss=s%60; return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`; }
+  function imgTag(id){ const url = PARTICIPANT_LOGOS[id]||''; return `<img class="logo" src="${url||'data:image/svg+xml;utf8,'+encodeURIComponent(`<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"26\" height=\"26\"><rect width=\"100%\" height=\"100%\" fill=\"#111\"/><text x=\"50%\" y=\"50%\" dominant-baseline=\"middle\" text-anchor=\"middle\" fill=\"#6b7280\" font-size=\"12\" font-family=\"Arial\">${id}</text></svg>')}" alt="logo">`; }
   function qtyInput(id){ return `<input class="qty" id="qty-${id}" type="number" min="1" value="1">`; }
-  function totalLabel(qty){ const t = (Number(qty||1)*VOTE_COST).toFixed(2); return `<span class="hint">Total: ${t} MON</span>` }
+  function totalLabel(qty){ const t = (Number(qty||1)*voteCostMON).toFixed(2); return `<span class="hint">Total: ${t} MON</span>` }
 
   let participants = [];
 
@@ -246,7 +239,6 @@
       participants = list;
 
       const state = await getTournamentState();
-      // Build matches for up to 3 rounds (8->4, 4->2, 2->1)
       const r1 = [await getMatch(1,1),await getMatch(1,2),await getMatch(1,3),await getMatch(1,4)];
       const r2 = [await getMatch(2,1),await getMatch(2,2)];
       const r3 = [await getMatch(3,1)];
@@ -261,6 +253,7 @@
     const isWin = m.finished && ((votes>=oppVotes) || m.winnerId===pid);
     const cls = m.finished? (isWin? 'row win':'row lose') : 'row';
     const name = (participants[pid-1]?.name) || (FALLBACK_NAMES[pid]||('P'+pid));
+    const idKey = `${m.round}-${m.match}-${pid}`;
     return `
       <div class="${cls}">
         <div style="display:flex;align-items:center;gap:8px;min-width:0">
@@ -270,7 +263,7 @@
         <div class="actions">
           <div class="badge" title="votes">${votes}</div>
           ${!m.finished ? `<div style="display:flex;align-items:center;gap:6px">
-            ${qtyInput(`${m.round}-${m.match}-${pid}`)}
+            ${qtyInput(idKey)}
             <button class="btn primary" onclick="handleVote(${m.round},${m.match},${pid})">Vote</button>
           </div>` : ''}
         </div>
@@ -288,25 +281,23 @@
       </div>`;
   }
 
-  function colHTML(matches){
-    return `<div class="col">${matches.map(matchHTML).join('')}</div>`
-  }
+  function colHTML(matches){ return `<div class="col">${matches.map(m=>m?matchHTML(m):'').join('')}</div>` }
 
   function renderBracket({state, r1, r2, r3}){
     const root = document.getElementById('bracket');
     root.innerHTML = ''+
-      colHTML([r1[0], r1[1]].filter(Boolean))+
-      colHTML([r2[0]].filter(Boolean))+
-      colHTML([r3[0]].filter(Boolean))+
-      colHTML([r2[1]].filter(Boolean))+
-      colHTML([r1[2], r1[3]].filter(Boolean));
+      colHTML([r1[0], r1[1]])+
+      colHTML([r2[0]])+
+      colHTML([r3[0]])+
+      colHTML([r2[1]])+
+      colHTML([r1[2], r1[3]]);
   }
 
   // ====== Button hooks ======
   window.handleVote = async (roundNum, matchNum, participantId) => {
     const el = document.getElementById(`qty-${roundNum}-${matchNum}-${participantId}`);
     const qty = Math.max(1, Number(el?.value||1));
-    if(!confirm(`Confirm vote ${qty}x for participant ${participantId}? Total ${(qty*VOTE_COST).toFixed(2)} MON`)) return;
+    if(!confirm(`Konfirmasi vote ${qty}x untuk peserta ${participantId}? Total ${(qty*voteCostMON).toFixed(2)} MON`)) return;
     try{ await vote(roundNum, matchNum, participantId, qty); }
     catch(e){ alert(e.message||e); }
   }
@@ -319,9 +310,31 @@
     try{ await finishMatch(r,m); }catch(e){ alert(e.message||e) }
   };
 
-  // Polling loop for real-time-ish updates
+  // ====== Optional: DB logging (Supabase REST) ======
+  async function sb(req){
+    if(!SUPABASE_URL||!SUPABASE_KEY) return null;
+    const res = await fetch(SUPABASE_URL+req.path,{method:req.method||'POST',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json',Prefer:'return=representation'},body:req.body?JSON.stringify(req.body):undefined});
+    return res.ok? res.json(): null;
+  }
+  function logVote(v){ return sb({path:'/rest/v1/votes',body:{round:v.roundNum,match:v.matchNum,participant:v.participantId,qty:v.qty,addr:v.from,ts:new Date().toISOString()}}); }
+  function logMatchFinish(){ /* hook if needed */ }
+  function saveTournamentState(){ /* hook if needed */ }
+
+  // ====== Real-time updates ======
   refresh();
-  setInterval(refresh, 10_000); // every 10s
+  setInterval(refresh, 5000); // polling setiap 5 detik
+
+  // Wallet listeners
+  if(window.ethereum){
+    window.ethereum.on?.('accountsChanged', ()=>location.reload());
+    window.ethereum.on?.('chainChanged', ()=>location.reload());
+  }
+
+  // Simple toast
+  function toast(msg){
+    const t=document.createElement('div');
+    t.textContent=msg; t.style.position='fixed'; t.style.bottom='20px'; t.style.left='50%'; t.style.transform='translateX(-50%)'; t.style.background='#111'; t.style.border='1px solid #333'; t.style.padding='10px 14px'; t.style.borderRadius='12px'; t.style.zIndex='9999'; document.body.appendChild(t); setTimeout(()=>t.remove(),1800);
+  }
   </script>
 </body>
 </html>
