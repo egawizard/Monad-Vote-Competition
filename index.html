@@ -486,14 +486,45 @@
 
         // Initialize the application
         async function init() {
+            console.log('Initializing application...');
             setupEventListeners();
+            
             if (typeof window.ethereum !== 'undefined') {
+                console.log('MetaMask detected');
                 try {
                     provider = new ethers.providers.Web3Provider(window.ethereum);
-                    await loadTournamentData();
+                    console.log('Provider created');
+                    
+                    // Add timeout for initial load
+                    const timeoutPromise = new Promise((_, reject) => {
+                        setTimeout(() => reject(new Error('Loading timeout')), 15000);
+                    });
+                    
+                    try {
+                        await Promise.race([loadTournamentData(), timeoutPromise]);
+                    } catch (timeoutError) {
+                        console.error('Initial load timeout:', timeoutError);
+                        document.getElementById('tournamentInfo').innerHTML = `
+                            <div style="color: #ff6b6b; text-align: center;">
+                                <h3>⚠️ Loading Timeout</h3>
+                                <p>Unable to connect to Monad testnet within 15 seconds.</p>
+                                <button onclick="location.reload()" style="background: #ffd700; color: #000; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Retry</button>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
                     startRefreshTimer();
                 } catch (error) {
                     console.error('Error initializing:', error);
+                    document.getElementById('tournamentInfo').innerHTML = `
+                        <div style="color: #ff6b6b; text-align: center;">
+                            <h3>⚠️ Initialization Error</h3>
+                            <p>Failed to initialize the application.</p>
+                            <p>Error: ${error.message}</p>
+                            <button onclick="location.reload()" style="background: #ffd700; color: #000; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Retry</button>
+                        </div>
+                    `;
                 }
             } else {
                 document.getElementById('tournamentInfo').innerHTML = 
@@ -596,12 +627,21 @@
             if (isLoading) return;
             isLoading = true;
 
+            console.log('Loading tournament data...');
+
             try {
-                // Use read-only provider for viewing data
-                const readProvider = new ethers.providers.JsonRpcProvider(RPC_URL);
+                // Use read-only provider for viewing data with timeout
+                const readProvider = new ethers.providers.JsonRpcProvider({
+                    url: RPC_URL,
+                    timeout: 10000 // 10 second timeout
+                });
+                
                 const readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readProvider);
 
+                console.log('Getting tournament state...');
                 const tournamentState = await readContract.getTournamentState();
+                console.log('Tournament state:', tournamentState);
+
                 const currentRound = tournamentState.round.toNumber();
                 const totalRounds = tournamentState.totalRounds.toNumber();
                 const state = tournamentState.tournamentState;
@@ -625,6 +665,7 @@
                 }
 
                 if (state === 1) { // Tournament in progress
+                    console.log('Loading bracket...');
                     await loadBracket(readContract, currentRound, totalRounds);
                 } else if (state === 0) {
                     const bracketContainer = document.getElementById('bracketContainer');
@@ -633,16 +674,31 @@
                         bracketContainer.innerHTML = waitingMessage;
                     }
                 } else {
+                    console.log('Loading finished tournament bracket...');
                     await loadBracket(readContract, currentRound, totalRounds);
                 }
+
+                console.log('Tournament data loaded successfully');
 
             } catch (error) {
                 console.error('Error loading tournament data:', error);
                 const infoElement = document.getElementById('tournamentInfo');
-                const errorMessage = '<p style="color: #ff6b6b;">Error loading tournament data. Please check your connection.</p>';
-                if (infoElement.innerHTML !== errorMessage) {
-                    infoElement.innerHTML = errorMessage;
-                }
+                const bracketContainer = document.getElementById('bracketContainer');
+                
+                let errorMessage = '<div style="color: #ff6b6b; text-align: center;">';
+                errorMessage += '<h3>⚠️ Connection Error</h3>';
+                errorMessage += '<p>Unable to connect to Monad testnet.</p>';
+                errorMessage += '<p>Please check:</p>';
+                errorMessage += '<ul style="text-align: left; display: inline-block;">';
+                errorMessage += '<li>Your internet connection</li>';
+                errorMessage += '<li>Monad testnet RPC is available</li>';
+                errorMessage += '<li>Contract address is correct</li>';
+                errorMessage += '</ul>';
+                errorMessage += '<button onclick="location.reload()" style="background: #ffd700; color: #000; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-top: 10px;">Retry</button>';
+                errorMessage += '</div>';
+                
+                infoElement.innerHTML = errorMessage;
+                bracketContainer.innerHTML = '';
             } finally {
                 isLoading = false;
             }
@@ -662,56 +718,74 @@
         async function loadBracket(contract, currentRound, totalRounds) {
             const bracketContainer = document.getElementById('bracketContainer');
             
-            // Only rebuild bracket if it's empty or structure has changed
-            if (bracketContainer.children.length === 0) {
-                bracketContainer.innerHTML = '';
+            try {
+                console.log('Loading bracket for round:', currentRound);
+                
+                // Only rebuild bracket if it's empty or structure has changed
+                if (bracketContainer.children.length === 0) {
+                    bracketContainer.innerHTML = '';
 
-                // Calculate bracket structure for 8 participants
-                const rounds = [
-                    { name: 'Quarter Finals', matches: 4 },
-                    { name: 'Semi Finals', matches: 2 },
-                    { name: 'Final', matches: 1 }
-                ];
+                    // Calculate bracket structure for 8 participants
+                    const rounds = [
+                        { name: 'Quarter Finals', matches: 4 },
+                        { name: 'Semi Finals', matches: 2 },
+                        { name: 'Final', matches: 1 }
+                    ];
 
-                for (let roundIndex = 0; roundIndex < rounds.length; roundIndex++) {
-                    const roundDiv = document.createElement('div');
-                    roundDiv.className = 'round';
-                    roundDiv.id = `round-${roundIndex}`;
-                    
-                    const roundTitle = document.createElement('h3');
-                    roundTitle.textContent = rounds[roundIndex].name;
-                    roundDiv.appendChild(roundTitle);
+                    for (let roundIndex = 0; roundIndex < rounds.length; roundIndex++) {
+                        const roundDiv = document.createElement('div');
+                        roundDiv.className = 'round';
+                        roundDiv.id = `round-${roundIndex}`;
+                        
+                        const roundTitle = document.createElement('h3');
+                        roundTitle.textContent = rounds[roundIndex].name;
+                        roundDiv.appendChild(roundTitle);
 
-                    // Load matches for this round
-                    for (let matchIndex = 0; matchIndex < rounds[roundIndex].matches; matchIndex++) {
-                        try {
-                            const matchData = await contract.getMatch(roundIndex, matchIndex);
-                            const matchDiv = await createMatchElement(contract, roundIndex, matchIndex, matchData);
-                            roundDiv.appendChild(matchDiv);
-                        } catch (error) {
-                            console.log(`Match ${roundIndex}-${matchIndex} not available yet`);
-                            
-                            // Show placeholder for future matches
-                            const matchDiv = document.createElement('div');
-                            matchDiv.className = 'match';
-                            matchDiv.id = `match-${roundIndex}-${matchIndex}`;
-                            matchDiv.innerHTML = `
-                                <div class="participant">
-                                    <span class="participant-name">TBD</span>
-                                </div>
-                                <div class="participant">
-                                    <span class="participant-name">TBD</span>
-                                </div>
-                            `;
-                            roundDiv.appendChild(matchDiv);
+                        // Load matches for this round
+                        for (let matchIndex = 0; matchIndex < rounds[roundIndex].matches; matchIndex++) {
+                            try {
+                                console.log(`Loading match ${roundIndex}-${matchIndex}`);
+                                const matchData = await contract.getMatch(roundIndex, matchIndex);
+                                console.log(`Match ${roundIndex}-${matchIndex} data:`, matchData);
+                                const matchDiv = await createMatchElement(contract, roundIndex, matchIndex, matchData);
+                                roundDiv.appendChild(matchDiv);
+                            } catch (error) {
+                                console.log(`Match ${roundIndex}-${matchIndex} not available yet:`, error.message);
+                                
+                                // Show placeholder for future matches
+                                const matchDiv = document.createElement('div');
+                                matchDiv.className = 'match';
+                                matchDiv.id = `match-${roundIndex}-${matchIndex}`;
+                                matchDiv.innerHTML = `
+                                    <div class="participant">
+                                        <span class="participant-name">TBD</span>
+                                    </div>
+                                    <div class="participant">
+                                        <span class="participant-name">TBD</span>
+                                    </div>
+                                `;
+                                roundDiv.appendChild(matchDiv);
+                            }
                         }
-                    }
 
-                    bracketContainer.appendChild(roundDiv);
+                        bracketContainer.appendChild(roundDiv);
+                    }
+                } else {
+                    // Just update existing matches
+                    console.log('Updating existing matches');
+                    await updateExistingMatches(contract);
                 }
-            } else {
-                // Just update existing matches
-                await updateExistingMatches(contract);
+                
+                console.log('Bracket loaded successfully');
+            } catch (error) {
+                console.error('Error loading bracket:', error);
+                bracketContainer.innerHTML = `
+                    <div style="text-align: center; width: 100%; color: #ff6b6b;">
+                        <h3>⚠️ Bracket Loading Error</h3>
+                        <p>Unable to load tournament bracket.</p>
+                        <button onclick="location.reload()" style="background: #ffd700; color: #000; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-top: 10px;">Retry</button>
+                    </div>
+                `;
             }
         }
 
