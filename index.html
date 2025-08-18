@@ -480,6 +480,9 @@
         let contract;
         let userAccount;
         let isOwner = false;
+        let isLoading = false;
+        let lastUpdateHash = '';
+        let refreshInterval;
 
         // Initialize the application
         async function init() {
@@ -488,7 +491,7 @@
                 try {
                     provider = new ethers.providers.Web3Provider(window.ethereum);
                     await loadTournamentData();
-                    setInterval(loadTournamentData, 10000); // Refresh every 10 seconds
+                    startRefreshTimer();
                 } catch (error) {
                     console.error('Error initializing:', error);
                 }
@@ -496,6 +499,20 @@
                 document.getElementById('tournamentInfo').innerHTML = 
                     '<p style="color: #ff6b6b;">Please install MetaMask to participate in voting!</p>';
             }
+        }
+
+        function startRefreshTimer() {
+            // Clear existing interval
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+            
+            // Set up new interval with longer delay and smart refresh
+            refreshInterval = setInterval(async () => {
+                if (!isLoading) {
+                    await loadTournamentDataSmart();
+                }
+            }, 15000); // Increased to 15 seconds
         }
 
         function setupEventListeners() {
@@ -576,6 +593,9 @@
         }
 
         async function loadTournamentData() {
+            if (isLoading) return;
+            isLoading = true;
+
             try {
                 // Use read-only provider for viewing data
                 const readProvider = new ethers.providers.JsonRpcProvider(RPC_URL);
@@ -593,75 +613,224 @@
                     case 2: stateText = 'Finished'; break;
                 }
 
-                document.getElementById('tournamentInfo').innerHTML = `
+                // Update tournament info without flickering
+                const infoElement = document.getElementById('tournamentInfo');
+                const newInfo = `
                     <h3>Tournament Status: <span style="color: #ffd700;">${stateText}</span></h3>
                     <p>Current Round: ${currentRound} / ${totalRounds}</p>
                 `;
+                
+                if (infoElement.innerHTML !== newInfo) {
+                    infoElement.innerHTML = newInfo;
+                }
 
                 if (state === 1) { // Tournament in progress
                     await loadBracket(readContract, currentRound, totalRounds);
                 } else if (state === 0) {
-                    document.getElementById('bracketContainer').innerHTML = 
-                        '<div style="text-align: center; width: 100%;"><h3>Tournament hasn\'t started yet</h3><p>Waiting for admin to start the tournament...</p></div>';
+                    const bracketContainer = document.getElementById('bracketContainer');
+                    const waitingMessage = '<div style="text-align: center; width: 100%;"><h3>Tournament hasn\'t started yet</h3><p>Waiting for admin to start the tournament...</p></div>';
+                    if (bracketContainer.innerHTML !== waitingMessage) {
+                        bracketContainer.innerHTML = waitingMessage;
+                    }
                 } else {
                     await loadBracket(readContract, currentRound, totalRounds);
                 }
 
             } catch (error) {
                 console.error('Error loading tournament data:', error);
-                document.getElementById('tournamentInfo').innerHTML = 
-                    '<p style="color: #ff6b6b;">Error loading tournament data. Please check your connection.</p>';
+                const infoElement = document.getElementById('tournamentInfo');
+                const errorMessage = '<p style="color: #ff6b6b;">Error loading tournament data. Please check your connection.</p>';
+                if (infoElement.innerHTML !== errorMessage) {
+                    infoElement.innerHTML = errorMessage;
+                }
+            } finally {
+                isLoading = false;
+            }
+        }
+
+        async function loadTournamentDataSmart() {
+            if (isLoading) return;
+            
+            try {
+                // Only update vote counts, not rebuild entire bracket
+                await updateVoteCounts();
+            } catch (error) {
+                console.error('Error in smart refresh:', error);
             }
         }
 
         async function loadBracket(contract, currentRound, totalRounds) {
             const bracketContainer = document.getElementById('bracketContainer');
-            bracketContainer.innerHTML = '';
+            
+            // Only rebuild bracket if it's empty or structure has changed
+            if (bracketContainer.children.length === 0) {
+                bracketContainer.innerHTML = '';
 
-            // Calculate bracket structure for 8 participants
-            const rounds = [
-                { name: 'Quarter Finals', matches: 4 },
-                { name: 'Semi Finals', matches: 2 },
-                { name: 'Final', matches: 1 }
-            ];
+                // Calculate bracket structure for 8 participants
+                const rounds = [
+                    { name: 'Quarter Finals', matches: 4 },
+                    { name: 'Semi Finals', matches: 2 },
+                    { name: 'Final', matches: 1 }
+                ];
 
-            for (let roundIndex = 0; roundIndex < rounds.length; roundIndex++) {
-                const roundDiv = document.createElement('div');
-                roundDiv.className = 'round';
-                
-                const roundTitle = document.createElement('h3');
-                roundTitle.textContent = rounds[roundIndex].name;
-                roundDiv.appendChild(roundTitle);
+                for (let roundIndex = 0; roundIndex < rounds.length; roundIndex++) {
+                    const roundDiv = document.createElement('div');
+                    roundDiv.className = 'round';
+                    roundDiv.id = `round-${roundIndex}`;
+                    
+                    const roundTitle = document.createElement('h3');
+                    roundTitle.textContent = rounds[roundIndex].name;
+                    roundDiv.appendChild(roundTitle);
 
-                // Load matches for this round
-                for (let matchIndex = 0; matchIndex < rounds[roundIndex].matches; matchIndex++) {
-                    try {
-                        const matchData = await contract.getMatch(roundIndex, matchIndex);
-                        const matchDiv = await createMatchElement(contract, roundIndex, matchIndex, matchData);
-                        roundDiv.appendChild(matchDiv);
-                    } catch (error) {
-                        console.log(`Match ${roundIndex}-${matchIndex} not available yet`);
-                        
-                        // Show placeholder for future matches
-                        const matchDiv = document.createElement('div');
-                        matchDiv.className = 'match';
-                        matchDiv.innerHTML = `
-                            <div class="participant">
-                                <span class="participant-name">TBD</span>
-                            </div>
-                            <div class="participant">
-                                <span class="participant-name">TBD</span>
-                            </div>
-                        `;
-                        roundDiv.appendChild(matchDiv);
+                    // Load matches for this round
+                    for (let matchIndex = 0; matchIndex < rounds[roundIndex].matches; matchIndex++) {
+                        try {
+                            const matchData = await contract.getMatch(roundIndex, matchIndex);
+                            const matchDiv = await createMatchElement(contract, roundIndex, matchIndex, matchData);
+                            roundDiv.appendChild(matchDiv);
+                        } catch (error) {
+                            console.log(`Match ${roundIndex}-${matchIndex} not available yet`);
+                            
+                            // Show placeholder for future matches
+                            const matchDiv = document.createElement('div');
+                            matchDiv.className = 'match';
+                            matchDiv.id = `match-${roundIndex}-${matchIndex}`;
+                            matchDiv.innerHTML = `
+                                <div class="participant">
+                                    <span class="participant-name">TBD</span>
+                                </div>
+                                <div class="participant">
+                                    <span class="participant-name">TBD</span>
+                                </div>
+                            `;
+                            roundDiv.appendChild(matchDiv);
+                        }
                     }
-                }
 
-                bracketContainer.appendChild(roundDiv);
+                    bracketContainer.appendChild(roundDiv);
+                }
+            } else {
+                // Just update existing matches
+                await updateExistingMatches(contract);
             }
         }
 
-        async function createMatchElement(contract, roundNum, matchNum, matchData) {
+        async function updateExistingMatches(contract) {
+            const rounds = [
+                { matches: 4 },
+                { matches: 2 },
+                { matches: 1 }
+            ];
+
+            for (let roundIndex = 0; roundIndex < rounds.length; roundIndex++) {
+                for (let matchIndex = 0; matchIndex < rounds[roundIndex].matches; matchIndex++) {
+                    try {
+                        const matchData = await contract.getMatch(roundIndex, matchIndex);
+                        await updateMatchElement(roundIndex, matchIndex, matchData);
+                    } catch (error) {
+                        // Match doesn't exist yet, skip
+                    }
+                }
+            }
+        }
+
+        async function updateVoteCounts() {
+            const readProvider = new ethers.providers.JsonRpcProvider(RPC_URL);
+            const readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readProvider);
+            
+            const rounds = [
+                { matches: 4 },
+                { matches: 2 },
+                { matches: 1 }
+            ];
+
+            for (let roundIndex = 0; roundIndex < rounds.length; roundIndex++) {
+                for (let matchIndex = 0; matchIndex < rounds[roundIndex].matches; matchIndex++) {
+                    try {
+                        const matchData = await readContract.getMatch(roundIndex, matchIndex);
+                        await updateMatchVotes(roundIndex, matchIndex, matchData);
+                    } catch (error) {
+                        // Match doesn't exist yet, skip
+                    }
+                }
+            }
+        }
+
+        async function updateMatchVotes(roundNum, matchNum, matchData) {
+            const matchElement = document.getElementById(`match-${roundNum}-${matchNum}`);
+            if (!matchElement) return;
+
+            const votes1 = matchData.votes1.toNumber();
+            const votes2 = matchData.votes2.toNumber();
+            const winnerId = matchData.winnerId.toNumber();
+            const finished = matchData.finished;
+
+            // Update vote counts without rebuilding entire match
+            const voteElements = matchElement.querySelectorAll('.votes');
+            if (voteElements[0]) voteElements[0].textContent = `${votes1} votes`;
+            if (voteElements[1]) voteElements[1].textContent = `${votes2} votes`;
+
+            // Update winner styling
+            const participants = matchElement.querySelectorAll('.participant');
+            if (finished && winnerId !== 0) {
+                participants[0].classList.toggle('winner', winnerId === matchData.participant1Id.toNumber());
+                participants[1].classList.toggle('winner', winnerId === matchData.participant2Id.toNumber());
+            }
+        }
+
+        async function updateMatchElement(roundNum, matchNum, matchData) {
+            const matchElement = document.getElementById(`match-${roundNum}-${matchNum}`);
+            if (!matchElement) return;
+
+            const participant1Id = matchData.participant1Id.toNumber();
+            const participant2Id = matchData.participant2Id.toNumber();
+            const votes1 = matchData.votes1.toNumber();
+            const votes2 = matchData.votes2.toNumber();
+            const winnerId = matchData.winnerId.toNumber();
+            const finished = matchData.finished;
+            const endTime = matchData.endTime.toNumber();
+
+            const participant1Name = PARTICIPANTS[participant1Id] || `Participant ${participant1Id}`;
+            const participant2Name = PARTICIPANTS[participant2Id] || `Participant ${participant2Id}`;
+
+            // Update content without full rebuild
+            const participants = matchElement.querySelectorAll('.participant');
+            if (participants[0]) {
+                participants[0].className = 'participant' + (winnerId === participant1Id && finished ? ' winner' : '');
+                participants[0].innerHTML = `
+                    <span class="participant-name">${participant1Name}</span>
+                    <div style="display: flex; align-items: center;">
+                        <span class="votes">${votes1} votes</span>
+                        ${!finished && userAccount ? `<button class="vote-btn" onclick="vote(${roundNum}, ${matchNum}, ${participant1Id})">Vote</button>` : ''}
+                    </div>
+                `;
+            }
+
+            if (participants[1]) {
+                participants[1].className = 'participant' + (winnerId === participant2Id && finished ? ' winner' : '');
+                participants[1].innerHTML = `
+                    <span class="participant-name">${participant2Name}</span>
+                    <div style="display: flex; align-items: center;">
+                        <span class="votes">${votes2} votes</span>
+                        ${!finished && userAccount ? `<button class="vote-btn" onclick="vote(${roundNum}, ${matchNum}, ${participant2Id})">Vote</button>` : ''}
+                    </div>
+                `;
+            }
+
+            // Update timer
+            let timerElement = document.getElementById(`timer-${roundNum}-${matchNum}`);
+            if (!finished && endTime > 0) {
+                if (!timerElement) {
+                    timerElement = document.createElement('div');
+                    timerElement.className = 'match-timer';
+                    timerElement.id = `timer-${roundNum}-${matchNum}`;
+                    matchElement.appendChild(timerElement);
+                }
+                updateTimer(roundNum, matchNum, endTime);
+            } else if (timerElement) {
+                timerElement.remove();
+            }
+        }
             const matchDiv = document.createElement('div');
             matchDiv.className = 'match';
             matchDiv.id = `match-${roundNum}-${matchNum}`;
@@ -748,6 +917,10 @@
                 return;
             }
 
+            // Disable all vote buttons temporarily
+            const voteButtons = document.querySelectorAll('.vote-btn');
+            voteButtons.forEach(btn => btn.disabled = true);
+
             try {
                 const tx = await contract.vote(roundNum, matchNum, participantId, {
                     value: VOTE_COST,
@@ -763,6 +936,10 @@
             } catch (error) {
                 console.error('Error voting:', error);
                 alert('Failed to vote. Please try again.');
+            } finally {
+                // Re-enable vote buttons
+                const newVoteButtons = document.querySelectorAll('.vote-btn');
+                newVoteButtons.forEach(btn => btn.disabled = false);
             }
         }
 
