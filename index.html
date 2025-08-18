@@ -91,6 +91,8 @@
             min-height: 600px;
             overflow-x: auto;
             padding: 20px 0;
+            opacity: 1;
+            transition: none;
         }
 
         .round {
@@ -480,70 +482,23 @@
         let contract;
         let userAccount;
         let isOwner = false;
-        let isLoading = false;
-        let lastUpdateHash = '';
-        let refreshInterval;
+        let lastBracketData = null;
 
         // Initialize the application
         async function init() {
-            console.log('Initializing application...');
             setupEventListeners();
-            
             if (typeof window.ethereum !== 'undefined') {
-                console.log('MetaMask detected');
                 try {
                     provider = new ethers.providers.Web3Provider(window.ethereum);
-                    console.log('Provider created');
-                    
-                    // Add timeout for initial load
-                    const timeoutPromise = new Promise((_, reject) => {
-                        setTimeout(() => reject(new Error('Loading timeout')), 15000);
-                    });
-                    
-                    try {
-                        await Promise.race([loadTournamentData(), timeoutPromise]);
-                    } catch (timeoutError) {
-                        console.error('Initial load timeout:', timeoutError);
-                        document.getElementById('tournamentInfo').innerHTML = `
-                            <div style="color: #ff6b6b; text-align: center;">
-                                <h3>⚠️ Loading Timeout</h3>
-                                <p>Unable to connect to Monad testnet within 15 seconds.</p>
-                                <button onclick="location.reload()" style="background: #ffd700; color: #000; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Retry</button>
-                            </div>
-                        `;
-                        return;
-                    }
-                    
-                    startRefreshTimer();
+                    await loadTournamentData();
+                    setInterval(loadTournamentDataSmart, 10000); // Smart refresh every 10 seconds
                 } catch (error) {
                     console.error('Error initializing:', error);
-                    document.getElementById('tournamentInfo').innerHTML = `
-                        <div style="color: #ff6b6b; text-align: center;">
-                            <h3>⚠️ Initialization Error</h3>
-                            <p>Failed to initialize the application.</p>
-                            <p>Error: ${error.message}</p>
-                            <button onclick="location.reload()" style="background: #ffd700; color: #000; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Retry</button>
-                        </div>
-                    `;
                 }
             } else {
                 document.getElementById('tournamentInfo').innerHTML = 
                     '<p style="color: #ff6b6b;">Please install MetaMask to participate in voting!</p>';
             }
-        }
-
-        function startRefreshTimer() {
-            // Clear existing interval
-            if (refreshInterval) {
-                clearInterval(refreshInterval);
-            }
-            
-            // Set up new interval with longer delay and smart refresh
-            refreshInterval = setInterval(async () => {
-                if (!isLoading) {
-                    await loadTournamentDataSmart();
-                }
-            }, 15000); // Increased to 15 seconds
         }
 
         function setupEventListeners() {
@@ -624,24 +579,12 @@
         }
 
         async function loadTournamentData() {
-            if (isLoading) return;
-            isLoading = true;
-
-            console.log('Loading tournament data...');
-
             try {
-                // Use read-only provider for viewing data with timeout
-                const readProvider = new ethers.providers.JsonRpcProvider({
-                    url: RPC_URL,
-                    timeout: 10000 // 10 second timeout
-                });
-                
+                // Use read-only provider for viewing data
+                const readProvider = new ethers.providers.JsonRpcProvider(RPC_URL);
                 const readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readProvider);
 
-                console.log('Getting tournament state...');
                 const tournamentState = await readContract.getTournamentState();
-                console.log('Tournament state:', tournamentState);
-
                 const currentRound = tournamentState.round.toNumber();
                 const totalRounds = tournamentState.totalRounds.toNumber();
                 const state = tournamentState.tournamentState;
@@ -653,143 +596,46 @@
                     case 2: stateText = 'Finished'; break;
                 }
 
-                // Update tournament info without flickering
-                const infoElement = document.getElementById('tournamentInfo');
-                const newInfo = `
+                document.getElementById('tournamentInfo').innerHTML = `
                     <h3>Tournament Status: <span style="color: #ffd700;">${stateText}</span></h3>
                     <p>Current Round: ${currentRound} / ${totalRounds}</p>
                 `;
-                
-                if (infoElement.innerHTML !== newInfo) {
-                    infoElement.innerHTML = newInfo;
-                }
 
                 if (state === 1) { // Tournament in progress
-                    console.log('Loading bracket...');
                     await loadBracket(readContract, currentRound, totalRounds);
                 } else if (state === 0) {
-                    const bracketContainer = document.getElementById('bracketContainer');
-                    const waitingMessage = '<div style="text-align: center; width: 100%;"><h3>Tournament hasn\'t started yet</h3><p>Waiting for admin to start the tournament...</p></div>';
-                    if (bracketContainer.innerHTML !== waitingMessage) {
-                        bracketContainer.innerHTML = waitingMessage;
-                    }
+                    document.getElementById('bracketContainer').innerHTML = 
+                        '<div style="text-align: center; width: 100%;"><h3>Tournament hasn\'t started yet</h3><p>Waiting for admin to start the tournament...</p></div>';
                 } else {
-                    console.log('Loading finished tournament bracket...');
                     await loadBracket(readContract, currentRound, totalRounds);
                 }
-
-                console.log('Tournament data loaded successfully');
 
             } catch (error) {
                 console.error('Error loading tournament data:', error);
-                const infoElement = document.getElementById('tournamentInfo');
-                const bracketContainer = document.getElementById('bracketContainer');
-                
-                let errorMessage = '<div style="color: #ff6b6b; text-align: center;">';
-                errorMessage += '<h3>⚠️ Connection Error</h3>';
-                errorMessage += '<p>Unable to connect to Monad testnet.</p>';
-                errorMessage += '<p>Please check:</p>';
-                errorMessage += '<ul style="text-align: left; display: inline-block;">';
-                errorMessage += '<li>Your internet connection</li>';
-                errorMessage += '<li>Monad testnet RPC is available</li>';
-                errorMessage += '<li>Contract address is correct</li>';
-                errorMessage += '</ul>';
-                errorMessage += '<button onclick="location.reload()" style="background: #ffd700; color: #000; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-top: 10px;">Retry</button>';
-                errorMessage += '</div>';
-                
-                infoElement.innerHTML = errorMessage;
-                bracketContainer.innerHTML = '';
-            } finally {
-                isLoading = false;
+                document.getElementById('tournamentInfo').innerHTML = 
+                    '<p style="color: #ff6b6b;">Error loading tournament data. Please check your connection.</p>';
             }
         }
 
+        // Smart refresh that only updates vote counts without rebuilding bracket
         async function loadTournamentDataSmart() {
-            if (isLoading) return;
-            
             try {
-                // Only update vote counts, not rebuild entire bracket
-                await updateVoteCounts();
+                const readProvider = new ethers.providers.JsonRpcProvider(RPC_URL);
+                const readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readProvider);
+
+                const tournamentState = await readContract.getTournamentState();
+                const state = tournamentState.tournamentState;
+
+                if (state === 1) { // Tournament in progress
+                    await updateVoteCountsOnly(readContract);
+                }
             } catch (error) {
                 console.error('Error in smart refresh:', error);
             }
         }
 
-        async function loadBracket(contract, currentRound, totalRounds) {
-            const bracketContainer = document.getElementById('bracketContainer');
-            
-            try {
-                console.log('Loading bracket for round:', currentRound);
-                
-                // Only rebuild bracket if it's empty or structure has changed
-                if (bracketContainer.children.length === 0) {
-                    bracketContainer.innerHTML = '';
-
-                    // Calculate bracket structure for 8 participants
-                    const rounds = [
-                        { name: 'Quarter Finals', matches: 4 },
-                        { name: 'Semi Finals', matches: 2 },
-                        { name: 'Final', matches: 1 }
-                    ];
-
-                    for (let roundIndex = 0; roundIndex < rounds.length; roundIndex++) {
-                        const roundDiv = document.createElement('div');
-                        roundDiv.className = 'round';
-                        roundDiv.id = `round-${roundIndex}`;
-                        
-                        const roundTitle = document.createElement('h3');
-                        roundTitle.textContent = rounds[roundIndex].name;
-                        roundDiv.appendChild(roundTitle);
-
-                        // Load matches for this round
-                        for (let matchIndex = 0; matchIndex < rounds[roundIndex].matches; matchIndex++) {
-                            try {
-                                console.log(`Loading match ${roundIndex}-${matchIndex}`);
-                                const matchData = await contract.getMatch(roundIndex, matchIndex);
-                                console.log(`Match ${roundIndex}-${matchIndex} data:`, matchData);
-                                const matchDiv = await createMatchElement(contract, roundIndex, matchIndex, matchData);
-                                roundDiv.appendChild(matchDiv);
-                            } catch (error) {
-                                console.log(`Match ${roundIndex}-${matchIndex} not available yet:`, error.message);
-                                
-                                // Show placeholder for future matches
-                                const matchDiv = document.createElement('div');
-                                matchDiv.className = 'match';
-                                matchDiv.id = `match-${roundIndex}-${matchIndex}`;
-                                matchDiv.innerHTML = `
-                                    <div class="participant">
-                                        <span class="participant-name">TBD</span>
-                                    </div>
-                                    <div class="participant">
-                                        <span class="participant-name">TBD</span>
-                                    </div>
-                                `;
-                                roundDiv.appendChild(matchDiv);
-                            }
-                        }
-
-                        bracketContainer.appendChild(roundDiv);
-                    }
-                } else {
-                    // Just update existing matches
-                    console.log('Updating existing matches');
-                    await updateExistingMatches(contract);
-                }
-                
-                console.log('Bracket loaded successfully');
-            } catch (error) {
-                console.error('Error loading bracket:', error);
-                bracketContainer.innerHTML = `
-                    <div style="text-align: center; width: 100%; color: #ff6b6b;">
-                        <h3>⚠️ Bracket Loading Error</h3>
-                        <p>Unable to load tournament bracket.</p>
-                        <button onclick="location.reload()" style="background: #ffd700; color: #000; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-top: 10px;">Retry</button>
-                    </div>
-                `;
-            }
-        }
-
-        async function updateExistingMatches(contract) {
+        // Only update vote counts without rebuilding bracket structure
+        async function updateVoteCountsOnly(contract) {
             const rounds = [
                 { matches: 4 },
                 { matches: 2 },
@@ -800,7 +646,7 @@
                 for (let matchIndex = 0; matchIndex < rounds[roundIndex].matches; matchIndex++) {
                     try {
                         const matchData = await contract.getMatch(roundIndex, matchIndex);
-                        await updateMatchElement(roundIndex, matchIndex, matchData);
+                        updateMatchVotesOnly(roundIndex, matchIndex, matchData);
                     } catch (error) {
                         // Match doesn't exist yet, skip
                     }
@@ -808,29 +654,8 @@
             }
         }
 
-        async function updateVoteCounts() {
-            const readProvider = new ethers.providers.JsonRpcProvider(RPC_URL);
-            const readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readProvider);
-            
-            const rounds = [
-                { matches: 4 },
-                { matches: 2 },
-                { matches: 1 }
-            ];
-
-            for (let roundIndex = 0; roundIndex < rounds.length; roundIndex++) {
-                for (let matchIndex = 0; matchIndex < rounds[roundIndex].matches; matchIndex++) {
-                    try {
-                        const matchData = await readContract.getMatch(roundIndex, matchIndex);
-                        await updateMatchVotes(roundIndex, matchIndex, matchData);
-                    } catch (error) {
-                        // Match doesn't exist yet, skip
-                    }
-                }
-            }
-        }
-
-        async function updateMatchVotes(roundNum, matchNum, matchData) {
+        // Update only vote numbers and winner status without rebuilding elements
+        function updateMatchVotesOnly(roundNum, matchNum, matchData) {
             const matchElement = document.getElementById(`match-${roundNum}-${matchNum}`);
             if (!matchElement) return;
 
@@ -839,7 +664,7 @@
             const winnerId = matchData.winnerId.toNumber();
             const finished = matchData.finished;
 
-            // Update vote counts without rebuilding entire match
+            // Update vote counts
             const voteElements = matchElement.querySelectorAll('.votes');
             if (voteElements[0]) voteElements[0].textContent = `${votes1} votes`;
             if (voteElements[1]) voteElements[1].textContent = `${votes2} votes`;
@@ -852,59 +677,59 @@
             }
         }
 
-        async function updateMatchElement(roundNum, matchNum, matchData) {
-            const matchElement = document.getElementById(`match-${roundNum}-${matchNum}`);
-            if (!matchElement) return;
+        async function loadBracket(contract, currentRound, totalRounds) {
+            const bracketContainer = document.getElementById('bracketContainer');
+            
+            // Only rebuild if bracket is completely empty
+            if (bracketContainer.children.length === 0) {
+                bracketContainer.innerHTML = '';
 
-            const participant1Id = matchData.participant1Id.toNumber();
-            const participant2Id = matchData.participant2Id.toNumber();
-            const votes1 = matchData.votes1.toNumber();
-            const votes2 = matchData.votes2.toNumber();
-            const winnerId = matchData.winnerId.toNumber();
-            const finished = matchData.finished;
-            const endTime = matchData.endTime.toNumber();
+                // Calculate bracket structure for 8 participants
+                const rounds = [
+                    { name: 'Quarter Finals', matches: 4 },
+                    { name: 'Semi Finals', matches: 2 },
+                    { name: 'Final', matches: 1 }
+                ];
 
-            const participant1Name = PARTICIPANTS[participant1Id] || `Participant ${participant1Id}`;
-            const participant2Name = PARTICIPANTS[participant2Id] || `Participant ${participant2Id}`;
+                for (let roundIndex = 0; roundIndex < rounds.length; roundIndex++) {
+                    const roundDiv = document.createElement('div');
+                    roundDiv.className = 'round';
+                    
+                    const roundTitle = document.createElement('h3');
+                    roundTitle.textContent = rounds[roundIndex].name;
+                    roundDiv.appendChild(roundTitle);
 
-            // Update content without full rebuild
-            const participants = matchElement.querySelectorAll('.participant');
-            if (participants[0]) {
-                participants[0].className = 'participant' + (winnerId === participant1Id && finished ? ' winner' : '');
-                participants[0].innerHTML = `
-                    <span class="participant-name">${participant1Name}</span>
-                    <div style="display: flex; align-items: center;">
-                        <span class="votes">${votes1} votes</span>
-                        ${!finished && userAccount ? `<button class="vote-btn" onclick="vote(${roundNum}, ${matchNum}, ${participant1Id})">Vote</button>` : ''}
-                    </div>
-                `;
-            }
+                    // Load matches for this round
+                    for (let matchIndex = 0; matchIndex < rounds[roundIndex].matches; matchIndex++) {
+                        try {
+                            const matchData = await contract.getMatch(roundIndex, matchIndex);
+                            const matchDiv = await createMatchElement(contract, roundIndex, matchIndex, matchData);
+                            roundDiv.appendChild(matchDiv);
+                        } catch (error) {
+                            console.log(`Match ${roundIndex}-${matchIndex} not available yet`);
+                            
+                            // Show placeholder for future matches
+                            const matchDiv = document.createElement('div');
+                            matchDiv.className = 'match';
+                            matchDiv.id = `match-${roundIndex}-${matchIndex}`;
+                            matchDiv.innerHTML = `
+                                <div class="participant">
+                                    <span class="participant-name">TBD</span>
+                                </div>
+                                <div class="participant">
+                                    <span class="participant-name">TBD</span>
+                                </div>
+                            `;
+                            roundDiv.appendChild(matchDiv);
+                        }
+                    }
 
-            if (participants[1]) {
-                participants[1].className = 'participant' + (winnerId === participant2Id && finished ? ' winner' : '');
-                participants[1].innerHTML = `
-                    <span class="participant-name">${participant2Name}</span>
-                    <div style="display: flex; align-items: center;">
-                        <span class="votes">${votes2} votes</span>
-                        ${!finished && userAccount ? `<button class="vote-btn" onclick="vote(${roundNum}, ${matchNum}, ${participant2Id})">Vote</button>` : ''}
-                    </div>
-                `;
-            }
-
-            // Update timer
-            let timerElement = document.getElementById(`timer-${roundNum}-${matchNum}`);
-            if (!finished && endTime > 0) {
-                if (!timerElement) {
-                    timerElement = document.createElement('div');
-                    timerElement.className = 'match-timer';
-                    timerElement.id = `timer-${roundNum}-${matchNum}`;
-                    matchElement.appendChild(timerElement);
+                    bracketContainer.appendChild(roundDiv);
                 }
-                updateTimer(roundNum, matchNum, endTime);
-            } else if (timerElement) {
-                timerElement.remove();
             }
         }
+
+        async function createMatchElement(contract, roundNum, matchNum, matchData) {
             const matchDiv = document.createElement('div');
             matchDiv.className = 'match';
             matchDiv.id = `match-${roundNum}-${matchNum}`;
@@ -991,10 +816,6 @@
                 return;
             }
 
-            // Disable all vote buttons temporarily
-            const voteButtons = document.querySelectorAll('.vote-btn');
-            voteButtons.forEach(btn => btn.disabled = true);
-
             try {
                 const tx = await contract.vote(roundNum, matchNum, participantId, {
                     value: VOTE_COST,
@@ -1005,15 +826,11 @@
                 await tx.wait();
                 alert('Vote confirmed!');
                 
-                // Refresh tournament data
-                await loadTournamentData();
+                // Only refresh vote counts, not rebuild bracket
+                await loadTournamentDataSmart();
             } catch (error) {
                 console.error('Error voting:', error);
                 alert('Failed to vote. Please try again.');
-            } finally {
-                // Re-enable vote buttons
-                const newVoteButtons = document.querySelectorAll('.vote-btn');
-                newVoteButtons.forEach(btn => btn.disabled = false);
             }
         }
 
