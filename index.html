@@ -153,6 +153,12 @@
             font-size: 1.1rem;
         }
 
+        .participant-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
         .votes {
             background: rgba(255, 215, 0, 0.2);
             padding: 8px 15px;
@@ -170,7 +176,6 @@
             cursor: pointer;
             font-weight: bold;
             transition: all 0.3s ease;
-            margin-left: 10px;
         }
 
         .vote-btn:hover {
@@ -483,6 +488,7 @@
         let userAccount;
         let isOwner = false;
         let lastBracketData = null;
+        let bracketInitialized = false;
 
         // Initialize the application
         async function init() {
@@ -571,6 +577,8 @@
                     console.error('Error checking owner:', error);
                 }
 
+                // Rebuild bracket to show vote buttons
+                bracketInitialized = false;
                 await loadTournamentData();
             } catch (error) {
                 console.error('Error connecting wallet:', error);
@@ -606,6 +614,7 @@
                 } else if (state === 0) {
                     document.getElementById('bracketContainer').innerHTML = 
                         '<div style="text-align: center; width: 100%;"><h3>Tournament hasn\'t started yet</h3><p>Waiting for admin to start the tournament...</p></div>';
+                    bracketInitialized = false;
                 } else {
                     await loadBracket(readContract, currentRound, totalRounds);
                 }
@@ -626,8 +635,11 @@
                 const tournamentState = await readContract.getTournamentState();
                 const state = tournamentState.tournamentState;
 
-                if (state === 1) { // Tournament in progress
+                if (state === 1 && bracketInitialized) { // Tournament in progress and bracket exists
                     await updateVoteCountsOnly(readContract);
+                } else if (state === 1 && !bracketInitialized) {
+                    // Tournament started but bracket not initialized, rebuild it
+                    await loadTournamentData();
                 }
             } catch (error) {
                 console.error('Error in smart refresh:', error);
@@ -674,62 +686,73 @@
             if (finished && winnerId !== 0) {
                 participants[0].classList.toggle('winner', winnerId === matchData.participant1Id.toNumber());
                 participants[1].classList.toggle('winner', winnerId === matchData.participant2Id.toNumber());
+                
+                // Hide vote buttons when match is finished
+                const voteButtons = matchElement.querySelectorAll('.vote-btn');
+                voteButtons.forEach(btn => btn.style.display = 'none');
             }
         }
 
         async function loadBracket(contract, currentRound, totalRounds) {
             const bracketContainer = document.getElementById('bracketContainer');
             
-            // Only rebuild if bracket is completely empty
-            if (bracketContainer.children.length === 0) {
-                bracketContainer.innerHTML = '';
+            // Always rebuild bracket to ensure vote buttons appear correctly
+            bracketContainer.innerHTML = '';
+            bracketInitialized = false;
 
-                // Calculate bracket structure for 8 participants
-                const rounds = [
-                    { name: 'Quarter Finals', matches: 4 },
-                    { name: 'Semi Finals', matches: 2 },
-                    { name: 'Final', matches: 1 }
-                ];
+            // Calculate bracket structure for 8 participants
+            const rounds = [
+                { name: 'Quarter Finals', matches: 4 },
+                { name: 'Semi Finals', matches: 2 },
+                { name: 'Final', matches: 1 }
+            ];
 
-                for (let roundIndex = 0; roundIndex < rounds.length; roundIndex++) {
-                    const roundDiv = document.createElement('div');
-                    roundDiv.className = 'round';
-                    
-                    const roundTitle = document.createElement('h3');
-                    roundTitle.textContent = rounds[roundIndex].name;
-                    roundDiv.appendChild(roundTitle);
+            for (let roundIndex = 0; roundIndex < rounds.length; roundIndex++) {
+                const roundDiv = document.createElement('div');
+                roundDiv.className = 'round';
+                
+                const roundTitle = document.createElement('h3');
+                roundTitle.textContent = rounds[roundIndex].name;
+                roundDiv.appendChild(roundTitle);
 
-                    // Load matches for this round
-                    for (let matchIndex = 0; matchIndex < rounds[roundIndex].matches; matchIndex++) {
-                        try {
-                            const matchData = await contract.getMatch(roundIndex, matchIndex);
-                            const matchDiv = await createMatchElement(contract, roundIndex, matchIndex, matchData);
-                            roundDiv.appendChild(matchDiv);
-                        } catch (error) {
-                            console.log(`Match ${roundIndex}-${matchIndex} not available yet`);
-                            
-                            // Show placeholder for future matches
-                            const matchDiv = document.createElement('div');
-                            matchDiv.className = 'match';
-                            matchDiv.id = `match-${roundIndex}-${matchIndex}`;
-                            matchDiv.innerHTML = `
-                                <div class="participant">
-                                    <span class="participant-name">TBD</span>
+                // Load matches for this round
+                for (let matchIndex = 0; matchIndex < rounds[roundIndex].matches; matchIndex++) {
+                    try {
+                        const matchData = await contract.getMatch(roundIndex, matchIndex);
+                        const matchDiv = createMatchElement(roundIndex, matchIndex, matchData);
+                        roundDiv.appendChild(matchDiv);
+                    } catch (error) {
+                        console.log(`Match ${roundIndex}-${matchIndex} not available yet`);
+                        
+                        // Show placeholder for future matches
+                        const matchDiv = document.createElement('div');
+                        matchDiv.className = 'match';
+                        matchDiv.id = `match-${roundIndex}-${matchIndex}`;
+                        matchDiv.innerHTML = `
+                            <div class="participant">
+                                <span class="participant-name">TBD</span>
+                                <div class="participant-actions">
+                                    <span class="votes">0 votes</span>
                                 </div>
-                                <div class="participant">
-                                    <span class="participant-name">TBD</span>
+                            </div>
+                            <div class="participant">
+                                <span class="participant-name">TBD</span>
+                                <div class="participant-actions">
+                                    <span class="votes">0 votes</span>
                                 </div>
-                            `;
-                            roundDiv.appendChild(matchDiv);
-                        }
+                            </div>
+                        `;
+                        roundDiv.appendChild(matchDiv);
                     }
-
-                    bracketContainer.appendChild(roundDiv);
                 }
+
+                bracketContainer.appendChild(roundDiv);
             }
+            
+            bracketInitialized = true;
         }
 
-        async function createMatchElement(contract, roundNum, matchNum, matchData) {
+        function createMatchElement(roundNum, matchNum, matchData) {
             const matchDiv = document.createElement('div');
             matchDiv.className = 'match';
             matchDiv.id = `match-${roundNum}-${matchNum}`;
@@ -745,25 +768,29 @@
             const participant1Name = PARTICIPANTS[participant1Id] || `Participant ${participant1Id}`;
             const participant2Name = PARTICIPANTS[participant2Id] || `Participant ${participant2Id}`;
 
+            // Create participant 1 element
             const participant1Div = document.createElement('div');
             participant1Div.className = 'participant' + (winnerId === participant1Id && finished ? ' winner' : '');
-            participant1Div.innerHTML = `
-                <span class="participant-name">${participant1Name}</span>
-                <div style="display: flex; align-items: center;">
-                    <span class="votes">${votes1} votes</span>
-                    ${!finished && userAccount ? `<button class="vote-btn" onclick="vote(${roundNum}, ${matchNum}, ${participant1Id})">Vote</button>` : ''}
-                </div>
-            `;
-
-            const participant2Div = document.createElement('div');
-            participant2Div.className = 'participant' + (winnerId === participant2Id && finished ? ' winner' : '');
-            participant2Div.innerHTML = `
-                <span class="participant-name">${participant2Name}</span>
-                <div style="display: flex; align-items: center;">
-                    <span class="votes">${votes2} votes</span>
-                    ${!finished && userAccount ? `<button class="vote-btn" onclick="vote(${roundNum}, ${matchNum}, ${participant2Id})">Vote</button>` : ''}
-                </div>
-            `;
+            
+            const participant1Actions = document.createElement('div');
+            participant1Actions.className = 'participant-actions';
+            
+            const votes1Span = document.createElement('span');
+            votes1Span.className = 'votes';
+            votes1Span.textContent = `${votes1} votes`;
+            participant1Actions.appendChild(votes1Span);
+            
+            // Add vote button if not finished and user is connected
+            if (!finished && userAccount) {
+                const vote2Btn = document.createElement('button');
+                vote2Btn.className = 'vote-btn';
+                vote2Btn.textContent = 'Vote';
+                vote2Btn.onclick = () => vote(roundNum, matchNum, participant2Id);
+                participant2Actions.appendChild(vote2Btn);
+            }
+            
+            participant2Div.innerHTML = `<span class="participant-name">${participant2Name}</span>`;
+            participant2Div.appendChild(participant2Actions);
 
             matchDiv.appendChild(participant1Div);
             matchDiv.appendChild(participant2Div);
@@ -889,3 +916,27 @@
     </script>
 </body>
 </html>
+            if (!finished && userAccount) {
+                const vote1Btn = document.createElement('button');
+                vote1Btn.className = 'vote-btn';
+                vote1Btn.textContent = 'Vote';
+                vote1Btn.onclick = () => vote(roundNum, matchNum, participant1Id);
+                participant1Actions.appendChild(vote1Btn);
+            }
+            
+            participant1Div.innerHTML = `<span class="participant-name">${participant1Name}</span>`;
+            participant1Div.appendChild(participant1Actions);
+
+            // Create participant 2 element
+            const participant2Div = document.createElement('div');
+            participant2Div.className = 'participant' + (winnerId === participant2Id && finished ? ' winner' : '');
+            
+            const participant2Actions = document.createElement('div');
+            participant2Actions.className = 'participant-actions';
+            
+            const votes2Span = document.createElement('span');
+            votes2Span.className = 'votes';
+            votes2Span.textContent = `${votes2} votes`;
+            participant2Actions.appendChild(votes2Span);
+            
+            // Add vote button if not finished and user is connected
