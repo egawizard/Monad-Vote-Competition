@@ -84,6 +84,17 @@
             backdrop-filter: blur(10px);
         }
 
+        .countdown-timer {
+            font-size: 1.5rem;
+            color: #ff6b6b;
+            font-weight: bold;
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(255, 107, 107, 0.1);
+            border-radius: 10px;
+            border: 2px solid rgba(255, 107, 107, 0.3);
+        }
+
         .bracket-container {
             display: flex;
             justify-content: center;
@@ -91,15 +102,13 @@
             min-height: 600px;
             overflow-x: auto;
             padding: 20px 0;
-            opacity: 1;
-            transition: none;
         }
 
         .round {
             display: flex;
             flex-direction: column;
             justify-content: space-around;
-            min-width: 250px;
+            min-width: 280px;
         }
 
         .round h3 {
@@ -114,10 +123,11 @@
             background: linear-gradient(145deg, #2d2d2d, #1a1a1a);
             border-radius: 15px;
             padding: 20px;
-            margin: 10px 0;
+            margin: 15px 0;
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
             border: 2px solid rgba(255, 215, 0, 0.2);
             transition: all 0.3s ease;
+            min-height: 160px;
         }
 
         .match:hover {
@@ -130,12 +140,12 @@
             justify-content: space-between;
             align-items: center;
             padding: 15px;
-            margin: 10px 0;
+            margin: 8px 0;
             background: rgba(255, 255, 255, 0.05);
             border-radius: 10px;
-            cursor: pointer;
             transition: all 0.3s ease;
             border: 2px solid transparent;
+            min-height: 50px;
         }
 
         .participant:hover {
@@ -151,6 +161,7 @@
         .participant-name {
             font-weight: bold;
             font-size: 1.1rem;
+            flex-grow: 1;
         }
 
         .participant-actions {
@@ -165,6 +176,8 @@
             border-radius: 20px;
             font-weight: bold;
             color: #ffd700;
+            min-width: 80px;
+            text-align: center;
         }
 
         .vote-btn {
@@ -176,6 +189,7 @@
             cursor: pointer;
             font-weight: bold;
             transition: all 0.3s ease;
+            white-space: nowrap;
         }
 
         .vote-btn:hover {
@@ -193,7 +207,11 @@
             text-align: center;
             color: #ff6b6b;
             font-weight: bold;
-            margin-top: 10px;
+            margin-top: 15px;
+            padding: 10px;
+            background: rgba(255, 107, 107, 0.1);
+            border-radius: 8px;
+            font-size: 0.9rem;
         }
 
         .admin-panel {
@@ -276,22 +294,12 @@
             text-decoration: underline;
         }
 
-        .connection-lines {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: -1;
-        }
-
         @media (max-width: 1200px) {
             .bracket-container {
                 gap: 30px;
             }
             .round {
-                min-width: 200px;
+                min-width: 250px;
             }
         }
 
@@ -335,6 +343,7 @@
                     <p>Loading tournament data...</p>
                 </div>
             </div>
+            <div id="countdownTimer" class="countdown-timer" style="display: none;"></div>
         </div>
 
         <div class="bracket-container" id="bracketContainer">
@@ -367,6 +376,7 @@
         const CHAIN_ID = 10143;
         const RPC_URL = 'https://testnet-rpc.monad.xyz';
         const VOTE_COST = ethers.utils.parseEther('0.1');
+        const ROUND_DURATION = 24 * 60 * 60; // 24 hours in seconds
 
         // Contract ABI
         const CONTRACT_ABI = [
@@ -466,6 +476,13 @@
                 "outputs": [{"internalType": "address", "name": "", "type": "address"}],
                 "stateMutability": "view",
                 "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "tournamentStartTime",
+                "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+                "stateMutability": "view",
+                "type": "function"
             }
         ];
 
@@ -487,8 +504,9 @@
         let contract;
         let userAccount;
         let isOwner = false;
-        let lastBracketData = null;
-        let bracketInitialized = false;
+        let tournamentStartTime = 0;
+        let currentRoundEndTime = 0;
+        let countdownInterval;
 
         // Initialize the application
         async function init() {
@@ -577,8 +595,6 @@
                     console.error('Error checking owner:', error);
                 }
 
-                // Rebuild bracket to show vote buttons
-                bracketInitialized = false;
                 await loadTournamentData();
             } catch (error) {
                 console.error('Error connecting wallet:', error);
@@ -609,14 +625,26 @@
                     <p>Current Round: ${currentRound} / ${totalRounds}</p>
                 `;
 
+                // Get tournament start time
+                if (state === 1) {
+                    try {
+                        tournamentStartTime = (await readContract.tournamentStartTime()).toNumber();
+                        currentRoundEndTime = tournamentStartTime + (currentRound * ROUND_DURATION);
+                        startCountdown();
+                    } catch (error) {
+                        console.log('Tournament start time not available');
+                    }
+                }
+
                 if (state === 1) { // Tournament in progress
                     await loadBracket(readContract, currentRound, totalRounds);
                 } else if (state === 0) {
                     document.getElementById('bracketContainer').innerHTML = 
                         '<div style="text-align: center; width: 100%;"><h3>Tournament hasn\'t started yet</h3><p>Waiting for admin to start the tournament...</p></div>';
-                    bracketInitialized = false;
+                    document.getElementById('countdownTimer').style.display = 'none';
                 } else {
                     await loadBracket(readContract, currentRound, totalRounds);
+                    document.getElementById('countdownTimer').style.display = 'none';
                 }
 
             } catch (error) {
@@ -624,6 +652,37 @@
                 document.getElementById('tournamentInfo').innerHTML = 
                     '<p style="color: #ff6b6b;">Error loading tournament data. Please check your connection.</p>';
             }
+        }
+
+        function startCountdown() {
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+
+            const countdownElement = document.getElementById('countdownTimer');
+            countdownElement.style.display = 'block';
+
+            countdownInterval = setInterval(() => {
+                const now = Math.floor(Date.now() / 1000);
+                const timeLeft = currentRoundEndTime - now;
+
+                if (timeLeft <= 0) {
+                    countdownElement.innerHTML = '⏰ Current round has ended!';
+                    clearInterval(countdownInterval);
+                    return;
+                }
+
+                const days = Math.floor(timeLeft / (24 * 60 * 60));
+                const hours = Math.floor((timeLeft % (24 * 60 * 60)) / (60 * 60));
+                const minutes = Math.floor((timeLeft % (60 * 60)) / 60);
+                const seconds = timeLeft % 60;
+
+                let timeString = '';
+                if (days > 0) timeString += `${days}d `;
+                timeString += `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+                countdownElement.innerHTML = `⏰ Current round ends in: ${timeString}`;
+            }, 1000);
         }
 
         // Smart refresh that only updates vote counts without rebuilding bracket
@@ -635,11 +694,8 @@
                 const tournamentState = await readContract.getTournamentState();
                 const state = tournamentState.tournamentState;
 
-                if (state === 1 && bracketInitialized) { // Tournament in progress and bracket exists
+                if (state === 1) { // Tournament in progress
                     await updateVoteCountsOnly(readContract);
-                } else if (state === 1 && !bracketInitialized) {
-                    // Tournament started but bracket not initialized, rebuild it
-                    await loadTournamentData();
                 }
             } catch (error) {
                 console.error('Error in smart refresh:', error);
@@ -695,10 +751,7 @@
 
         async function loadBracket(contract, currentRound, totalRounds) {
             const bracketContainer = document.getElementById('bracketContainer');
-            
-            // Always rebuild bracket to ensure vote buttons appear correctly
             bracketContainer.innerHTML = '';
-            bracketInitialized = false;
 
             // Calculate bracket structure for 8 participants
             const rounds = [
@@ -722,8 +775,6 @@
                         const matchDiv = createMatchElement(roundIndex, matchIndex, matchData);
                         roundDiv.appendChild(matchDiv);
                     } catch (error) {
-                        console.log(`Match ${roundIndex}-${matchIndex} not available yet`);
-                        
                         // Show placeholder for future matches
                         const matchDiv = document.createElement('div');
                         matchDiv.className = 'match';
@@ -748,8 +799,6 @@
 
                 bracketContainer.appendChild(roundDiv);
             }
-            
-            bracketInitialized = true;
         }
 
         function createMatchElement(roundNum, matchNum, matchData) {
@@ -772,6 +821,10 @@
             const participant1Div = document.createElement('div');
             participant1Div.className = 'participant' + (winnerId === participant1Id && finished ? ' winner' : '');
             
+            const participant1NameSpan = document.createElement('span');
+            participant1NameSpan.className = 'participant-name';
+            participant1NameSpan.textContent = participant1Name;
+            
             const participant1Actions = document.createElement('div');
             participant1Actions.className = 'participant-actions';
             
@@ -782,6 +835,34 @@
             
             // Add vote button if not finished and user is connected
             if (!finished && userAccount) {
+                const vote1Btn = document.createElement('button');
+                vote1Btn.className = 'vote-btn';
+                vote1Btn.textContent = 'Vote';
+                vote1Btn.onclick = () => vote(roundNum, matchNum, participant1Id);
+                participant1Actions.appendChild(vote1Btn);
+            }
+            
+            participant1Div.appendChild(participant1NameSpan);
+            participant1Div.appendChild(participant1Actions);
+
+            // Create participant 2 element
+            const participant2Div = document.createElement('div');
+            participant2Div.className = 'participant' + (winnerId === participant2Id && finished ? ' winner' : '');
+            
+            const participant2NameSpan = document.createElement('span');
+            participant2NameSpan.className = 'participant-name';
+            participant2NameSpan.textContent = participant2Name;
+            
+            const participant2Actions = document.createElement('div');
+            participant2Actions.className = 'participant-actions';
+            
+            const votes2Span = document.createElement('span');
+            votes2Span.className = 'votes';
+            votes2Span.textContent = `${votes2} votes`;
+            participant2Actions.appendChild(votes2Span);
+            
+            // Add vote button if not finished and user is connected
+            if (!finished && userAccount) {
                 const vote2Btn = document.createElement('button');
                 vote2Btn.className = 'vote-btn';
                 vote2Btn.textContent = 'Vote';
@@ -789,7 +870,7 @@
                 participant2Actions.appendChild(vote2Btn);
             }
             
-            participant2Div.innerHTML = `<span class="participant-name">${participant2Name}</span>`;
+            participant2Div.appendChild(participant2NameSpan);
             participant2Div.appendChild(participant2Actions);
 
             matchDiv.appendChild(participant1Div);
@@ -801,13 +882,13 @@
                 timerDiv.className = 'match-timer';
                 timerDiv.id = `timer-${roundNum}-${matchNum}`;
                 matchDiv.appendChild(timerDiv);
-                updateTimer(roundNum, matchNum, endTime);
+                updateMatchTimer(roundNum, matchNum, endTime);
             }
 
             return matchDiv;
         }
 
-        function updateTimer(roundNum, matchNum, endTime) {
+        function updateMatchTimer(roundNum, matchNum, endTime) {
             const timerElement = document.getElementById(`timer-${roundNum}-${matchNum}`);
             if (!timerElement) return;
 
@@ -816,7 +897,7 @@
                 const remaining = endTime - now;
 
                 if (remaining <= 0) {
-                    timerElement.textContent = 'Time\'s up!';
+                    timerElement.textContent = 'Match ended!';
                     return;
                 }
 
@@ -824,7 +905,7 @@
                 const minutes = Math.floor((remaining % 3600) / 60);
                 const seconds = remaining % 60;
 
-                timerElement.textContent = `Time remaining: ${hours}h ${minutes}m ${seconds}s`;
+                timerElement.textContent = `Match ends in: ${hours}h ${minutes}m ${seconds}s`;
             }
 
             update();
@@ -916,27 +997,3 @@
     </script>
 </body>
 </html>
-            if (!finished && userAccount) {
-                const vote1Btn = document.createElement('button');
-                vote1Btn.className = 'vote-btn';
-                vote1Btn.textContent = 'Vote';
-                vote1Btn.onclick = () => vote(roundNum, matchNum, participant1Id);
-                participant1Actions.appendChild(vote1Btn);
-            }
-            
-            participant1Div.innerHTML = `<span class="participant-name">${participant1Name}</span>`;
-            participant1Div.appendChild(participant1Actions);
-
-            // Create participant 2 element
-            const participant2Div = document.createElement('div');
-            participant2Div.className = 'participant' + (winnerId === participant2Id && finished ? ' winner' : '');
-            
-            const participant2Actions = document.createElement('div');
-            participant2Actions.className = 'participant-actions';
-            
-            const votes2Span = document.createElement('span');
-            votes2Span.className = 'votes';
-            votes2Span.textContent = `${votes2} votes`;
-            participant2Actions.appendChild(votes2Span);
-            
-            // Add vote button if not finished and user is connected
