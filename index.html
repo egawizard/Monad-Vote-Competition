@@ -10,10 +10,10 @@
     <meta property="fc:frame:image" content="https://your-domain.com/tournament-preview.png" />
     <meta property="fc:frame:button:1" content="🏆 View Tournament" />
     <meta property="fc:frame:button:1:action" content="link" />
-    <meta property="fc:frame:button:1:target" content="https://monad-vote-competition.vercel.app/" />
+    <meta property="fc:frame:button:1:target" content="https://your-domain.com" />
     <meta property="fc:frame:button:2" content="🗳️ Vote Now" />
     <meta property="fc:frame:button:2:action" content="link" />
-    <meta property="fc:frame:button:2:target" content="https://monad-vote-competition.vercel.app/" />
+    <meta property="fc:frame:button:2:target" content="https://your-domain.com" />
     
     <!-- Open Graph Meta Tags -->
     <meta property="og:title" content="Tournament Voting Championship - Monad Testnet" />
@@ -718,19 +718,39 @@
 
         // Initialize the application
         async function init() {
+            console.log('Initializing application...');
             detectFarcaster();
             setupEventListeners();
+            
+            // Check if we have web3 support
             if (typeof window.ethereum !== 'undefined') {
+                console.log('Web3 provider detected');
                 try {
+                    // Initialize provider but don't auto-connect
                     provider = new ethers.providers.Web3Provider(window.ethereum);
+                    console.log('Provider initialized');
+                    
+                    // Load tournament data immediately (read-only)
                     await loadTournamentData();
+                    
+                    // Set up smart refresh
                     setInterval(loadTournamentDataSmart, 10000); // Smart refresh every 10 seconds
+                    console.log('Smart refresh started');
+                    
                 } catch (error) {
                     console.error('Error initializing:', error);
+                    document.getElementById('tournamentInfo').innerHTML = 
+                        '<p style="color: #ff6b6b;">Initialization error. Please refresh the page.</p>';
                 }
             } else {
-                document.getElementById('tournamentInfo').innerHTML = 
-                    '<p style="color: #ff6b6b;">Please install MetaMask to participate in voting!</p>';
+                console.log('No web3 provider found');
+                document.getElementById('tournamentInfo').innerHTML = `
+                    <h3 style="color: #ff6b6b;">MetaMask Required</h3>
+                    <p>Please install MetaMask to view tournament data and participate in voting.</p>
+                    <a href="https://metamask.io/download/" target="_blank" class="connect-btn" style="display: inline-block; margin-top: 15px;">
+                        Install MetaMask
+                    </a>
+                `;
             }
         }
 
@@ -809,4 +829,3 @@
                 console.error('Error connecting wallet:', error);
                 alert('Failed to connect wallet. Please try again.');
             }
-
