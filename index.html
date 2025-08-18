@@ -655,15 +655,21 @@
                     <p>Current Round: ${currentRound} / ${totalRounds}</p>
                 `;
 
-                // Get tournament start time
+                // Get tournament start time and show countdown
                 if (state === 1) {
                     try {
                         tournamentStartTime = (await readContract.tournamentStartTime()).toNumber();
+                        // Calculate current round end time - rounds are 1-indexed in the contract
                         currentRoundEndTime = tournamentStartTime + (currentRound * ROUND_DURATION);
                         startCountdown();
                     } catch (error) {
-                        console.log('Tournament start time not available');
+                        console.log('Tournament start time not available, using fallback countdown');
+                        // Fallback: show a generic countdown if start time is not available
+                        showFallbackCountdown();
                     }
+                } else {
+                    // Hide countdown when tournament is not in progress
+                    document.getElementById('countdownTimer').style.display = 'none';
                 }
 
                 if (state === 1) { // Tournament in progress
@@ -676,9 +682,16 @@
                         </div>
                     `;
                     document.getElementById('countdownTimer').style.display = 'none';
-                } else {
+                } else if (state === 2) {
                     await loadBracket(readContract);
                     document.getElementById('countdownTimer').style.display = 'none';
+                    // Show tournament finished message
+                    const countdownElement = document.getElementById('countdownTimer');
+                    countdownElement.style.display = 'block';
+                    countdownElement.innerHTML = '🎉 Tournament has finished! Check the final results above.';
+                    countdownElement.style.background = 'rgba(76, 175, 80, 0.1)';
+                    countdownElement.style.borderColor = 'rgba(76, 175, 80, 0.3)';
+                    countdownElement.style.color = '#4CAF50';
                 }
 
             } catch (error) {
@@ -696,13 +709,17 @@
             const countdownElement = document.getElementById('countdownTimer');
             countdownElement.style.display = 'block';
 
-            countdownInterval = setInterval(() => {
+            function updateTimer() {
                 const now = Math.floor(Date.now() / 1000);
                 const timeLeft = currentRoundEndTime - now;
 
                 if (timeLeft <= 0) {
-                    countdownElement.innerHTML = '⏰ Current round has ended!';
+                    countdownElement.innerHTML = '⏰ Current round has ended! Waiting for next round...';
                     clearInterval(countdownInterval);
+                    // Try to reload tournament data to check for round progression
+                    setTimeout(() => {
+                        loadTournamentData();
+                    }, 5000);
                     return;
                 }
 
@@ -713,10 +730,40 @@
 
                 let timeString = '';
                 if (days > 0) timeString += `${days}d `;
-                timeString += `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                if (hours > 0 || days > 0) timeString += `${hours.toString().padStart(2, '0')}:`;
+                timeString += `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
                 countdownElement.innerHTML = `⏰ Current round ends in: ${timeString}`;
-            }, 1000);
+            }
+
+            // Update immediately, then every second
+            updateTimer();
+            countdownInterval = setInterval(updateTimer, 1000);
+        }
+
+        function showFallbackCountdown() {
+            const countdownElement = document.getElementById('countdownTimer');
+            countdownElement.style.display = 'block';
+            countdownElement.innerHTML = '⏰ Tournament is active - Round timer loading...';
+            
+            // Try to get the start time again after a few seconds
+            setTimeout(async () => {
+                try {
+                    const readProvider = new ethers.providers.JsonRpcProvider(RPC_URL);
+                    const readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readProvider);
+                    const startTime = (await readContract.tournamentStartTime()).toNumber();
+                    
+                    if (startTime > 0) {
+                        tournamentStartTime = startTime;
+                        const tournamentState = await readContract.getTournamentState();
+                        const currentRound = tournamentState.round.toNumber();
+                        currentRoundEndTime = tournamentStartTime + (currentRound * ROUND_DURATION);
+                        startCountdown();
+                    }
+                } catch (error) {
+                    console.log('Still unable to get tournament start time');
+                }
+            }, 3000);
         }
 
         // Smart refresh that only updates vote counts without rebuilding bracket
