@@ -8,26 +8,26 @@
     <!-- Farcaster Frame Meta Tags -->
     <meta property="fc:frame" content="vNext" />
     <meta property="fc:frame:image" content="https://your-domain.com/tournament-preview.png" />
-    <meta property="fc:frame:image:aspect_ratio" content="1.91:1" />
-    <meta property="fc:frame:button:1" content="View Tournament" />
+    <meta property="fc:frame:button:1" content="🏆 View Tournament" />
     <meta property="fc:frame:button:1:action" content="link" />
-    <meta property="fc:frame:button:1:target" content="https://your-domain.com/tournament" />
-    <meta property="fc:frame:button:2" content="Connect & Vote" />
-    <meta property="fc:frame:button:2:action" content="post" />
-    <meta property="fc:frame:post_url" content="https://your-domain.com/api/frame" />
+    <meta property="fc:frame:button:1:target" content="https://your-domain.com" />
+    <meta property="fc:frame:button:2" content="🗳️ Vote Now" />
+    <meta property="fc:frame:button:2:action" content="link" />
+    <meta property="fc:frame:button:2:target" content="https://your-domain.com" />
     
     <!-- Open Graph Meta Tags -->
-    <meta property="og:title" content="🏆 Tournament Voting Championship" />
-    <meta property="og:description" content="Vote for your favorite projects on Monad Testnet" />
+    <meta property="og:title" content="Tournament Voting Championship - Monad Testnet" />
+    <meta property="og:description" content="Vote for your favorite projects on Monad Testnet! 🏆 Live tournament with 8 competitors" />
     <meta property="og:image" content="https://your-domain.com/tournament-preview.png" />
     <meta property="og:url" content="https://your-domain.com" />
     <meta property="og:type" content="website" />
     
     <!-- Twitter Card Meta Tags -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="🏆 Tournament Voting Championship" />
-    <meta name="twitter:description" content="Vote for your favorite projects on Monad Testnet" />
+    <meta name="twitter:title" content="Tournament Voting Championship - Monad Testnet" />
+    <meta name="twitter:description" content="Vote for your favorite projects on Monad Testnet! 🏆 Live tournament with 8 competitors" />
     <meta name="twitter:image" content="https://your-domain.com/tournament-preview.png" />
+    <meta name="twitter:creator" content="@ega_2ez4crypto" />
 
     <style>
         * {
@@ -50,6 +50,32 @@
             padding: 20px;
         }
 
+        /* Farcaster-specific styling */
+        .farcaster-banner {
+            background: linear-gradient(45deg, #855dcd, #6b46c1);
+            color: white;
+            text-align: center;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            display: none; /* Will show via JS detection */
+            border: 2px solid rgba(133, 93, 205, 0.3);
+        }
+
+        .farcaster-banner.active {
+            display: block;
+        }
+
+        .farcaster-banner h3 {
+            margin-bottom: 8px;
+            font-size: 1.2rem;
+        }
+
+        .farcaster-banner p {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
         .header {
             text-align: center;
             margin-bottom: 30px;
@@ -66,26 +92,6 @@
             -webkit-text-fill-color: transparent;
             text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
             margin-bottom: 10px;
-        }
-
-        .farcaster-info {
-            background: rgba(138, 99, 210, 0.2);
-            border: 2px solid rgba(138, 99, 210, 0.4);
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-
-        .farcaster-badge {
-            background: linear-gradient(45deg, #8A63D2, #6B46C1);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 20px;
-            display: inline-block;
-            margin-bottom: 10px;
-            font-weight: bold;
-            font-size: 0.9rem;
         }
 
         .wallet-section {
@@ -140,6 +146,7 @@
             border: 2px solid rgba(255, 107, 107, 0.3);
         }
 
+        /* New Simplified Bracket Design */
         .bracket-container {
             display: flex;
             flex-direction: column;
@@ -304,47 +311,48 @@
             text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
         }
 
-        .frame-actions {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            margin-top: 30px;
-            flex-wrap: wrap;
+        .admin-panel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(145deg, #2d2d2d, #1a1a1a);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 215, 0, 0.3);
+            z-index: 1000;
+            display: none;
         }
 
-        .frame-btn {
-            background: linear-gradient(45deg, #8A63D2, #6B46C1);
-            color: white;
+        .admin-panel.active {
+            display: block;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 999;
+            display: none;
+        }
+
+        .overlay.active {
+            display: block;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
             border: none;
-            padding: 15px 30px;
-            border-radius: 10px;
+            color: #fff;
+            font-size: 1.5rem;
             cursor: pointer;
-            font-weight: bold;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-        }
-
-        .frame-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(138, 99, 210, 0.4);
-        }
-
-        .footer {
-            text-align: center;
-            margin-top: 50px;
-            padding: 20px;
-            color: #888;
-        }
-
-        .footer a {
-            color: #ffd700;
-            text-decoration: none;
-        }
-
-        .footer a:hover {
-            text-decoration: underline;
         }
 
         .loading {
@@ -367,6 +375,71 @@
             100% { transform: rotate(360deg); }
         }
 
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 20px;
+            color: #888;
+        }
+
+        .footer a {
+            color: #ffd700;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        .tournament-placeholder {
+            text-align: center; 
+            width: 100%; 
+            padding: 50px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .tournament-placeholder h3 {
+            color: #ffd700;
+            font-size: 2rem;
+            margin-bottom: 15px;
+        }
+
+        .tournament-placeholder p {
+            color: #ccc;
+            font-size: 1.1rem;
+        }
+
+        /* Share buttons for Farcaster */
+        .share-section {
+            text-align: center;
+            margin: 30px 0;
+            padding: 20px;
+            background: rgba(133, 93, 205, 0.1);
+            border-radius: 15px;
+            border: 2px solid rgba(133, 93, 205, 0.2);
+        }
+
+        .share-btn {
+            background: linear-gradient(45deg, #855dcd, #6b46c1);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .share-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(133, 93, 205, 0.4);
+        }
+
         @media (max-width: 768px) {
             .header h1 {
                 font-size: 2rem;
@@ -384,20 +457,30 @@
             .participant-name {
                 font-size: 1rem;
             }
+
+            .farcaster-banner {
+                padding: 10px;
+            }
+
+            .share-btn {
+                display: block;
+                margin: 10px auto;
+                width: 200px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- Farcaster Banner -->
+        <div class="farcaster-banner" id="farcasterBanner">
+            <h3>🎯 Viewed via Farcaster Frame!</h3>
+            <p>Welcome to the Tournament Voting Championship on Monad Testnet</p>
+        </div>
+
         <div class="header">
             <h1>🏆 Tournament Voting Championship</h1>
             <p>Vote for your favorite projects on Monad Testnet</p>
-        </div>
-
-        <!-- Farcaster Frame Info -->
-        <div class="farcaster-info">
-            <div class="farcaster-badge">🔵 Farcaster Frame Enabled</div>
-            <p>This tournament is now accessible directly in Farcaster! Cast this link to share with your community.</p>
         </div>
 
         <div class="wallet-section">
@@ -420,34 +503,51 @@
             <div id="countdownTimer" class="countdown-timer" style="display: none;"></div>
         </div>
 
-        <div class="bracket-container" id="bracketContainer">
-            <!-- Tournament bracket will be generated here -->
+        <!-- Share Section -->
+        <div class="share-section">
+            <h3 style="color: #855dcd; margin-bottom: 15px;">📢 Share Tournament</h3>
+            <p style="margin-bottom: 20px; color: #ccc;">Share this tournament with your Farcaster community!</p>
+            <a href="javascript:void(0)" onclick="shareToFarcaster()" class="share-btn">
+                🎯 Share to Farcaster
+            </a>
+            <a href="javascript:void(0)" onclick="copyLink()" class="share-btn">
+                📋 Copy Link
+            </a>
         </div>
 
-        <!-- Frame Action Buttons -->
-        <div class="frame-actions">
-            <button class="frame-btn" onclick="shareToFarcaster()">📤 Share on Farcaster</button>
-            <button class="frame-btn" onclick="viewOnWarpcast()">👀 View on Warpcast</button>
+        <div class="bracket-container" id="bracketContainer">
+            <!-- Tournament bracket will be generated here -->
         </div>
 
         <div class="footer">
             <p>Created by <a href="https://x.com/ega_2ez4crypto" target="_blank">@ega_2ez4crypto</a></p>
             <p>Contract: 0x31Cab363Ef737D83Ea72E04C811397049e06b619 | Vote Cost: 0.1 MON</p>
-            <p>🔵 <strong>Farcaster Frame Compatible</strong> - Cast this URL to enable in-app voting!</p>
+        </div>
+    </div>
+
+    <!-- Admin Panel -->
+    <div class="overlay" id="overlay"></div>
+    <div class="admin-panel" id="adminPanel">
+        <button class="close-btn" id="closeAdmin">&times;</button>
+        <h3 style="color: #ffd700; margin-bottom: 20px;">Admin Panel</h3>
+        <div style="display: flex; flex-direction: column; gap: 15px;">
+            <button id="startTournament" class="connect-btn">Start Tournament</button>
+            <button id="forceFinishMatches" class="connect-btn">Force Finish Expired Matches</button>
+            <div id="adminStatus"></div>
         </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <script>
-        // Contract configuration (same as original)
+        // Contract configuration
         const CONTRACT_ADDRESS = '0x31Cab363Ef737D83Ea72E04C811397049e06b619';
         const TREASURY_ADDRESS = '0x6c2AA81b02a940c04A570aFFe7a413ca54C625cf';
         const CHAIN_ID = 10143;
         const RPC_URL = 'https://testnet-rpc.monad.xyz';
         const VOTE_COST = ethers.utils.parseEther('0.1');
-        const ROUND_DURATION = 24 * 60 * 60;
+        const ROUND_DURATION = 24 * 60 * 60; // 24 hours in seconds
 
-        // Contract ABI (same as original)
+        // Contract ABI
         const CONTRACT_ABI = [
             {
                 "inputs": [
@@ -555,7 +655,7 @@
             }
         ];
 
-        // Participant names mapping (same as original)
+        // Participant names mapping
         const PARTICIPANTS = {
             0: 'LUMITERRA',
             1: 'KURU EXCHANGE', 
@@ -567,7 +667,7 @@
             7: 'Opinion Labs'
         };
 
-        // Global variables (same as original)
+        // Global variables
         let provider;
         let signer;
         let contract;
@@ -577,39 +677,54 @@
         let currentRoundEndTime = 0;
         let countdownInterval;
 
-        // Farcaster Frame functions
+        // Farcaster detection and sharing functions
+        function detectFarcaster() {
+            const userAgent = navigator.userAgent.toLowerCase();
+            const referrer = document.referrer.toLowerCase();
+            const isFarcaster = userAgent.includes('farcaster') || 
+                              referrer.includes('warpcast') || 
+                              referrer.includes('farcaster') ||
+                              window.location.search.includes('fc=');
+            
+            if (isFarcaster) {
+                document.getElementById('farcasterBanner').classList.add('active');
+            }
+        }
+
         function shareToFarcaster() {
             const currentUrl = window.location.href;
-            const text = "🏆 Join the Tournament Voting Championship on Monad Testnet! Vote for your favorite projects.";
-            const farcasterUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}&embeds[]=${encodeURIComponent(currentUrl)}`;
-            window.open(farcasterUrl, '_blank');
+            const text = "🏆 Check out this epic Tournament Voting Championship on Monad Testnet! 8 amazing projects competing for the crown. Cast your vote now! 🗳️";
+            
+            // Warpcast share URL
+            const shareUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(text)}&embeds[]=${encodeURIComponent(currentUrl)}`;
+            window.open(shareUrl, '_blank');
         }
 
-        function viewOnWarpcast() {
+        function copyLink() {
             const currentUrl = window.location.href;
-            const warpcastUrl = `https://warpcast.com/~/add-cast-action?url=${encodeURIComponent(currentUrl)}`;
-            window.open(warpcastUrl, '_blank');
+            navigator.clipboard.writeText(currentUrl).then(() => {
+                alert('Link copied to clipboard! 📋');
+            }).catch(() => {
+                // Fallback for browsers that don't support clipboard API
+                const textArea = document.createElement('textarea');
+                textArea.value = currentUrl;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                alert('Link copied to clipboard! 📋');
+            });
         }
 
-        // Check if we're in Farcaster Frame context
-        function isInFarcasterFrame() {
-            return window.parent !== window || window.location !== window.parent.location;
-        }
-
-        // Initialize the application (same as original but with frame detection)
+        // Initialize the application
         async function init() {
+            detectFarcaster();
             setupEventListeners();
-            
-            // Add Farcaster-specific styling if in frame
-            if (isInFarcasterFrame()) {
-                document.body.classList.add('farcaster-frame');
-            }
-            
             if (typeof window.ethereum !== 'undefined') {
                 try {
                     provider = new ethers.providers.Web3Provider(window.ethereum);
                     await loadTournamentData();
-                    setInterval(loadTournamentDataSmart, 10000);
+                    setInterval(loadTournamentDataSmart, 10000); // Smart refresh every 10 seconds
                 } catch (error) {
                     console.error('Error initializing:', error);
                 }
@@ -619,10 +734,13 @@
             }
         }
 
-        // All other functions remain the same as in your original code
         function setupEventListeners() {
             document.getElementById('connectWallet').addEventListener('click', connectWallet);
             document.getElementById('adminBtn').addEventListener('click', showAdminPanel);
+            document.getElementById('closeAdmin').addEventListener('click', hideAdminPanel);
+            document.getElementById('overlay').addEventListener('click', hideAdminPanel);
+            document.getElementById('startTournament').addEventListener('click', startTournament);
+            document.getElementById('forceFinishMatches').addEventListener('click', forceFinishMatches);
         }
 
         async function connectWallet() {
@@ -632,8 +750,10 @@
                     return;
                 }
 
+                // Request account access
                 const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
                 
+                // Switch to Monad testnet
                 try {
                     await window.ethereum.request({
                         method: 'wallet_switchEthereumChain',
@@ -667,11 +787,13 @@
                 signer = provider.getSigner();
                 contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
+                // Update UI
                 document.getElementById('connectWallet').style.display = 'none';
                 document.getElementById('walletAddress').style.display = 'block';
                 document.getElementById('walletAddress').innerHTML = 
                     `<span style="color: #ffd700;">Connected: ${userAccount.substr(0, 6)}...${userAccount.substr(-4)}</span>`;
 
+                // Check if user is owner
                 try {
                     const owner = await contract.owner();
                     isOwner = owner.toLowerCase() === userAccount.toLowerCase();
@@ -687,22 +809,3 @@
                 console.error('Error connecting wallet:', error);
                 alert('Failed to connect wallet. Please try again.');
             }
-        }
-
-        // Include all other functions from your original code here
-        // (loadTournamentData, loadBracket, vote, etc.)
-        // I'm keeping this shorter for the artifact, but you'd include all the original functions
-
-        async function loadTournamentData() {
-            // Same implementation as original
-        }
-
-        async function vote(roundNum, matchNum, participantId) {
-            // Same implementation as original
-        }
-
-        // Initialize when page loads
-        document.addEventListener('DOMContentLoaded', init);
-    </script>
-</body>
-</html>
