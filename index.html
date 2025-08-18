@@ -529,16 +529,40 @@
         let currentRoundEndTime = 0;
         let countdownInterval;
 
-        // Initialize the application
+        // Initialize with better error handling
         async function init() {
             setupEventListeners();
+            
             if (typeof window.ethereum !== 'undefined') {
                 try {
                     provider = new ethers.providers.Web3Provider(window.ethereum);
-                    await loadTournamentData();
-                    setInterval(loadTournamentDataSmart, 10000); // Smart refresh every 10 seconds
+                    
+                    // Initial load without wallet connection
+                    document.getElementById('tournamentInfo').innerHTML = `
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            <p>Loading tournament data...</p>
+                        </div>
+                    `;
+
+                    // Try to load basic tournament info
+                    try {
+                        await loadTournamentData();
+                    } catch (error) {
+                        console.error('Initial load failed:', error);
+                        document.getElementById('tournamentInfo').innerHTML = `
+                            <p style="color: #ff6b6b;">Unable to connect to Monad network.</p>
+                            <p style="color: #ccc; font-size: 0.9rem;">Please check your internet connection or try refreshing.</p>
+                            <button class="connect-btn" onclick="loadTournamentData()" style="margin-top: 10px;">Retry</button>
+                        `;
+                    }
+
+                    // Start refresh interval
+                    setInterval(loadTournamentDataSmart, 15000); // Increased to 15 seconds
                 } catch (error) {
                     console.error('Error initializing:', error);
+                    document.getElementById('tournamentInfo').innerHTML = 
+                        '<p style="color: #ff6b6b;">Failed to initialize. Please refresh the page.</p>';
                 }
             } else {
                 document.getElementById('tournamentInfo').innerHTML = 
@@ -561,6 +585,9 @@
                     alert('Please install MetaMask!');
                     return;
                 }
+
+                document.getElementById('connectWallet').textContent = 'Connecting...';
+                document.getElementById('connectWallet').disabled = true;
 
                 // Request account access
                 const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
@@ -590,8 +617,13 @@
                             });
                         } catch (addError) {
                             console.error('Failed to add network:', addError);
+                            alert('Failed to add Monad network. Please add it manually.');
                             return;
                         }
+                    } else {
+                        console.error('Network switch error:', switchError);
+                        alert('Failed to switch network. Please switch to Monad testnet manually.');
+                        return;
                     }
                 }
 
@@ -607,29 +639,63 @@
 
                 // Check if user is owner
                 try {
-                    const owner = await contract.owner();
+                    const timeoutPromise = new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Owner check timeout')), 5000)
+                    );
+
+                    const owner = await Promise.race([
+                        contract.owner(),
+                        timeoutPromise
+                    ]);
+
                     isOwner = owner.toLowerCase() === userAccount.toLowerCase();
                     if (isOwner) {
                         document.getElementById('adminBtn').style.display = 'block';
                     }
                 } catch (error) {
                     console.error('Error checking owner:', error);
+                    // Continue without admin check
                 }
 
                 await loadTournamentData();
+
             } catch (error) {
                 console.error('Error connecting wallet:', error);
                 alert('Failed to connect wallet. Please try again.');
+                
+                // Reset button
+                document.getElementById('connectWallet').textContent = 'Connect Wallet';
+                document.getElementById('connectWallet').disabled = false;
             }
         }
 
         async function loadTournamentData() {
             try {
-                // Use read-only provider for viewing data
-                const readProvider = new ethers.providers.JsonRpcProvider(RPC_URL);
+                document.getElementById('tournamentInfo').innerHTML = `
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Connecting to Monad network...</p>
+                    </div>
+                `;
+
+                // Use read-only provider with timeout
+                const readProvider = new ethers.providers.JsonRpcProvider({
+                    url: RPC_URL,
+                    timeout: 15000 // 15 second timeout
+                });
+
                 const readContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, readProvider);
 
-                const tournamentState = await readContract.getTournamentState();
+                // Add timeout to contract calls
+                const timeoutPromise = new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('Request timeout')), 10000)
+                );
+
+                const tournamentState = await Promise.race([
+                    readContract.getTournamentState(),
+                    timeoutPromise
+                ]);
+
                 const currentRound = tournamentState.round.toNumber();
                 const totalRounds = tournamentState.totalRounds.toNumber();
                 const state = tournamentState.tournamentState;
@@ -649,11 +715,15 @@
                 // Get tournament start time and setup countdown
                 if (state === 1) {
                     try {
-                        tournamentStartTime = (await readContract.tournamentStartTime()).toNumber();
+                        const startTimePromise = Promise.race([
+                            readContract.tournamentStartTime(),
+                            timeoutPromise
+                        ]);
+                        tournamentStartTime = (await startTimePromise).toNumber();
                         currentRoundEndTime = tournamentStartTime + (currentRound * ROUND_DURATION);
                         startCountdown();
                     } catch (error) {
-                        console.log('Tournament start time not available');
+                        console.log('Tournament start time not available:', error.message);
                     }
                 }
 
@@ -674,8 +744,18 @@
 
             } catch (error) {
                 console.error('Error loading tournament data:', error);
-                document.getElementById('tournamentInfo').innerHTML = 
-                    '<p style="color: #ff6b6b;">Error loading tournament data. Please check your connection.</p>';
+                let errorMessage = 'Error loading tournament data.';
+                
+                if (error.message.includes('timeout') || error.message.includes('network')) {
+                    errorMessage = 'Network timeout. Please check your connection to Monad network.';
+                } else if (error.message.includes('contract')) {
+                    errorMessage = 'Contract not found. Please verify the contract address.';
+                }
+
+                document.getElementById('tournamentInfo').innerHTML = `
+                    <p style="color: #ff6b6b;">${errorMessage}</p>
+                    <button class="connect-btn" onclick="loadTournamentData()" style="margin-top: 10px;">Retry</button>
+                `;
             }
         }
 
@@ -1004,8 +1084,9 @@
             }
         }
 
-        // Make vote function global
+        // Make functions globally accessible
         window.vote = vote;
+        window.loadTournamentData = loadTournamentData;
 
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', init);
